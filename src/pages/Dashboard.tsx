@@ -3,31 +3,32 @@ import { KpiCard, Card, CardHeader, CardBody, Badge } from '@/components/ui'
 import { useKPIs, useResumoParceria, useResumoProfissional } from '@/hooks/useResumo'
 import { useLancamentos } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'
-import type { ParceriaId } from '@/types'
 
-const CORES_PIE = ['#1F3864','#2E75B6','#E67E22','#27AE60']
+const CORES_PIE = ['#1F3864', '#2E75B6', '#E67E22', '#27AE60']
 
 export default function Dashboard() {
-  const { data: kpis }          = useKPIs()
-  const { data: resumoParc }    = useResumoParceria()
-  const { data: resumoProf }    = useResumoProfissional()
-  const { data: lancamentos }   = useLancamentos()
+  const { data: kpis }        = useKPIs()
+  const { data: resumoParc }  = useResumoParceria()
+  const { data: resumoProf }  = useResumoProfissional()
+  const { data: lancamentos } = useLancamentos()
 
-  const dadosBarras = resumoParc?.map(r => ({
+  const dadosBarras = (resumoParc ?? []).map(r => ({
     name: `Parceria ${r.parceria}`,
-    'Psi1': r.psi1_total,
-    'Psi2': r.psi2_total,
-    'Camta': r.camta_total,
-    'Médico': r.medico_total,
-  })) ?? []
+    Psi1:   Number(r.psi1_total   ?? 0),
+    Psi2:   Number(r.psi2_total   ?? 0),
+    Camta:  Number(r.camta_total  ?? 0),
+    Médico: Number(r.medico_total ?? 0),
+  }))
 
-  const dadosPizza = resumoProf?.filter(r => r.total > 0).map((r, i) => ({
-    name: r.profissional.charAt(0).toUpperCase() + r.profissional.slice(1),
-    value: Number(r.total),
-    color: CORES_PIE[i % CORES_PIE.length],
-  })) ?? []
+  const dadosPizza = (resumoProf ?? [])
+    .filter(r => Number(r.total) > 0)
+    .map((r, i) => ({
+      name:  r.profissional.charAt(0).toUpperCase() + r.profissional.slice(1),
+      value: Number(r.total),
+      color: CORES_PIE[i % CORES_PIE.length],
+    }))
 
-  const ultimosLancamentos = lancamentos?.slice(0, 5) ?? []
+  const ultimosLancamentos = (lancamentos ?? []).slice(0, 5)
 
   return (
     <div className="space-y-6">
@@ -36,15 +37,13 @@ export default function Dashboard() {
         <p className="text-gray-500 text-sm mt-1">Visão geral das parcerias clínicas</p>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Total Atendimentos"   value={kpis?.totalAtendimentos ?? 0}            color="border-l-[#1F3864]" />
-        <KpiCard label="Receita Total"        value={fmt.moeda(kpis?.receitaTotal ?? 0)}      color="border-l-[#2E75B6]" />
-        <KpiCard label="Receita Recebida"     value={fmt.moeda(kpis?.receitaPaga ?? 0)}       color="border-l-green-500" />
-        <KpiCard label="Parcelas Vencidas"    value={kpis?.parcelasVencidas ?? 0}  sub="pendentes" color="border-l-red-400" />
+        <KpiCard label="Total Atendimentos" value={kpis?.totalAtendimentos ?? 0}          color="border-l-[#1F3864]" />
+        <KpiCard label="Receita Total"      value={fmt.moeda(kpis?.receitaTotal ?? 0)}    color="border-l-[#2E75B6]" />
+        <KpiCard label="Receita Recebida"   value={fmt.moeda(kpis?.receitaPaga ?? 0)}     color="border-l-green-500" />
+        <KpiCard label="Parcelas Vencidas"  value={kpis?.parcelasVencidas ?? 0} sub="pendentes" color="border-l-red-400" />
       </div>
 
-      {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader><h2 className="font-semibold text-[#1F3864]">Rateio por Parceria</h2></CardHeader>
@@ -52,7 +51,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={dadosBarras} margin={{ top: 8 }}>
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                <YAxis tickFormatter={v => `R$${(Number(v) / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number) => fmt.moeda(v)} />
                 <Legend />
                 <Bar dataKey="Camta"  fill="#1F3864" radius={[3,3,0,0]} />
@@ -67,20 +66,26 @@ export default function Dashboard() {
         <Card>
           <CardHeader><h2 className="font-semibold text-[#1F3864]">Distribuição por Profissional</h2></CardHeader>
           <CardBody>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={dadosPizza} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                  {dadosPizza.map((d, i) => <Cell key={i} fill={d.color} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => fmt.moeda(v)} />
-              </PieChart>
-            </ResponsiveContainer>
+            {dadosPizza.length === 0 ? (
+              <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
+                Nenhum dado ainda
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie data={dadosPizza} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}
+                    label={({ name, percent }: { name: string; percent: number }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`}>
+                    {dadosPizza.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => fmt.moeda(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardBody>
         </Card>
       </div>
 
-      {/* Últimos lançamentos */}
       <Card>
         <CardHeader><h2 className="font-semibold text-[#1F3864]">Últimos Lançamentos</h2></CardHeader>
         <div className="overflow-x-auto">
@@ -93,14 +98,15 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {ultimosLancamentos.length === 0 && (
+              {ultimosLancamentos.length === 0 ? (
                 <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento ainda</td></tr>
-              )}
-              {ultimosLancamentos.map(l => (
+              ) : ultimosLancamentos.map(l => (
                 <tr key={l.id} className="hover:bg-gray-50">
                   <td className="px-6 py-3">{fmt.data(l.data_atendimento)}</td>
                   <td className="px-6 py-3 font-medium">{l.paciente}</td>
-                  <td className="px-6 py-3"><Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge></td>
+                  <td className="px-6 py-3">
+                    <Badge variant={l.parceria_id as 'A' | 'B' | 'C'}>Parceria {l.parceria_id}</Badge>
+                  </td>
                   <td className="px-6 py-3 font-semibold">{fmt.moeda(l.valor_total)}</td>
                   <td className="px-6 py-3">
                     <Badge variant={l.status === 'pago' ? 'success' : l.status === 'cancelado' ? 'danger' : 'warning'}>
