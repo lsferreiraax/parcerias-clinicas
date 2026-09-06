@@ -3,7 +3,7 @@ import { KpiCard, Card, CardHeader, CardBody, Badge } from '@/components/ui'
 import { useKPIs, useResumoParceria, useResumoProfissional } from '@/hooks/useResumo'
 import { useLancamentos } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'
-import type { ParceríaId } from '@/types'
+import type { ParceriaId } from '@/types'
 
 const CORES_PIE = ['#1F3864','#2E75B6','#E67E22','#27AE60']
 
@@ -100,7 +100,7 @@ export default function Dashboard() {
                 <tr key={l.id} className="hover:bg-gray-50">
                   <td className="px-6 py-3">{fmt.data(l.data_atendimento)}</td>
                   <td className="px-6 py-3 font-medium">{l.paciente}</td>
-                  <td className="px-6 py-3"><Badge variant={l.parceria_id as ParceríaId}>Parceria {l.parceria_id}</Badge></td>
+                  <td className="px-6 py-3"><Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge></td>
                   <td className="px-6 py-3 font-semibold">{fmt.moeda(l.valor_total)}</td>
                   <td className="px-6 py-3">
                     <Badge variant={l.status === 'pago' ? 'success' : l.status === 'cancelado' ? 'danger' : 'warning'}>

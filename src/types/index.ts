@@ -1,10 +1,10 @@
-export type ParceríaId = 'A' | 'B' | 'C'
+export type ParceriaId = 'A' | 'B' | 'C'
 export type FormaPagamento = 'avista' | 'parcelado'
 export type StatusLancamento = 'pendente' | 'pago' | 'cancelado'
 export type StatusParcela = 'pendente' | 'pago' | 'vencido'
 
 export interface Parceria {
-  id: ParceríaId
+  id: ParceriaId
   descricao: string
   camta_pct: number
   medico_pct: number
@@ -16,7 +16,7 @@ export interface Lancamento {
   id: string
   data_atendimento: string
   paciente: string
-  parceria_id: ParceríaId
+  parceria_id: ParceriaId
   forma_pagamento: FormaPagamento
   num_parcelas: number
   valor_total: number
@@ -48,7 +48,7 @@ export interface Parcela {
 }
 
 export interface ResumoParceria {
-  parceria: ParceríaId
+  parceria: ParceriaId
   descricao: string
   total_atendimentos: number
   valor_total: number

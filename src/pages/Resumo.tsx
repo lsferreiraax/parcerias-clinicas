@@ -2,7 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } fro
 import { Card, CardHeader, CardBody, Badge } from '@/components/ui'
 import { useResumoParceria, useResumoProfissional } from '@/hooks/useResumo'
 import { fmt } from '@/lib/utils'
-import type { ParceríaId } from '@/types'
+import type { ParceriaId } from '@/types'
 
 const PROF_LABELS: Record<string, string> = {
   camta: 'Camta', medico: 'Médico', psi1: 'Psi1', psi2: 'Psi2'
@@ -39,7 +39,7 @@ export default function Resumo() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Badge variant={r.parceria as ParceríaId}>Parceria {r.parceria}</Badge>
+                  <Badge variant={r.parceria as ParceriaId}>Parceria {r.parceria}</Badge>
                   <span className="text-sm text-gray-500">{r.descricao}</span>
                 </div>
                 <span className="text-sm text-gray-500">{r.total_atendimentos} atendimento(s)</span>

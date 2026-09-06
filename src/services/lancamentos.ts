@@ -1,11 +1,11 @@
 import { supabase } from '@/lib/supabase'
 import { calcularRateio } from './rateio'
-import type { Lancamento, ParceríaId, FormaPagamento } from '@/types'
+import type { Lancamento, ParceriaId, FormaPagamento } from '@/types'
 
 export interface NovoLancamento {
   data_atendimento: string
   paciente: string
-  parceria_id: ParceríaId
+  parceria_id: ParceriaId
   forma_pagamento: FormaPagamento
   num_parcelas: number
   valor_total: number

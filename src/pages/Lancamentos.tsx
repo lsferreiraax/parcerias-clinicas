@@ -4,11 +4,11 @@ import { Card, Button, Badge, Modal, Input, Select } from '@/components/ui'
 import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'
 import { calcularRateio, LABELS_PARCERIA } from '@/services/rateio'
-import type { ParceríaId, FormaPagamento } from '@/types'
+import type { ParceriaId, FormaPagamento } from '@/types'
 
 const INIT = {
   data_atendimento: new Date().toISOString().split('T')[0],
-  paciente: '', parceria_id: 'A' as ParceríaId,
+  paciente: '', parceria_id: 'A' as ParceriaId,
   forma_pagamento: 'avista' as FormaPagamento,
   num_parcelas: 1, valor_total: 0, observacoes: '',
 }
@@ -50,7 +50,7 @@ export default function Lancamentos() {
           <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
             onChange={e => setFiltros(f => ({ ...f, parceria: e.target.value || undefined }))}>
             <option value="">Todas as parcerias</option>
-            {(['A','B','C'] as ParceríaId[]).map(p => <option key={p}>{p}</option>)}
+            {(['A','B','C'] as ParceriaId[]).map(p => <option key={p}>{p}</option>)}
           </select>
           <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
             onChange={e => setFiltros(f => ({ ...f, status: e.target.value || undefined }))}>
@@ -124,8 +124,8 @@ export default function Lancamentos() {
             <Input label="Data do Atendimento" type="date" value={form.data_atendimento}
               onChange={e => setForm(f => ({ ...f, data_atendimento: e.target.value }))} />
             <Select label="Parceria" value={form.parceria_id}
-              onChange={e => setForm(f => ({ ...f, parceria_id: e.target.value as ParceríaId }))}>
-              {(['A','B','C'] as ParceríaId[]).map(p => (
+              onChange={e => setForm(f => ({ ...f, parceria_id: e.target.value as ParceriaId }))}>
+              {(['A','B','C'] as ParceriaId[]).map(p => (
                 <option key={p} value={p}>{LABELS_PARCERIA[p]}</option>
               ))}
             </Select>

@@ -3,7 +3,7 @@ import { CheckCircle, AlertCircle } from 'lucide-react'
 import { Card, Badge, KpiCard } from '@/components/ui'
 import { useParcelas, useMarcarParcelaPaga } from '@/hooks/useResumo'
 import { fmt } from '@/lib/utils'
-import type { ParceríaId } from '@/types'
+import type { ParceriaId } from '@/types'
 
 export default function Parcelas() {
   const [filtroStatus, setFiltroStatus] = useState<string>('')
@@ -74,7 +74,7 @@ export default function Parcelas() {
                   <tr key={p.id} className={`hover:bg-gray-50 ${vencida ? 'bg-red-50/40' : ''}`}>
                     <td className="px-4 py-3 font-medium">{p.lancamentos?.paciente}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={p.lancamentos?.parceria_id as ParceríaId}>
+                      <Badge variant={p.lancamentos?.parceria_id as ParceriaId}>
                         Parceria {p.lancamentos?.parceria_id}
                       </Badge>
                     </td>
