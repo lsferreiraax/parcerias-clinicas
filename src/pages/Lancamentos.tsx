@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, CheckCircle, Eye } from 'lucide-react'
+import { Plus, Trash2, CheckCircle } from "lucide-react"
 import { Card, Button, Badge, Modal, Input, Select } from '@/components/ui'
 import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CheckCircle, AlertCircle } from 'lucide-react'
-import { Card, Badge, Button, KpiCard } from '@/components/ui'
+import { Card, Badge, KpiCard } from '@/components/ui'
 import { useParcelas, useMarcarParcelaPaga } from '@/hooks/useResumo'
 import { fmt } from '@/lib/utils'
 import type { ParceríaId } from '@/types'

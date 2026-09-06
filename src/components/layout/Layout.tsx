@@ -1,5 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, CreditCard, BarChart3, Settings } from 'lucide-react'
+import { NavLink, Outlet } from "react-router-dom"
+import { LayoutDashboard, ClipboardList, CreditCard, BarChart3 } from "lucide-react"
 
 const nav = [
   { to: '/',          label: 'Dashboard',   icon: LayoutDashboard },
