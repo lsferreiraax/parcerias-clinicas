@@ -25,39 +25,37 @@ CREATE TRIGGER user_profiles_updated_at
   BEFORE UPDATE ON user_profiles
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+-- ── Função auxiliar sem recursão (SECURITY DEFINER) ───────────────────
+-- Lê o role do usuário atual sem acionar as políticas RLS da tabela,
+-- evitando recursão infinita nas políticas de admin.
+CREATE OR REPLACE FUNCTION get_my_role()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM user_profiles WHERE id = auth.uid()
+$$;
+
 -- ── RLS ──────────────────────────────────────────────────────────────
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
--- Usuário vê apenas o próprio perfil
+-- Cada usuário lê apenas o próprio perfil
 CREATE POLICY "perfil_select_proprio"
   ON user_profiles FOR SELECT TO authenticated
   USING (id = auth.uid());
 
--- Admin vê todos os perfis
+-- Admin lê todos os perfis (via função para evitar recursão)
 CREATE POLICY "perfil_select_admin"
   ON user_profiles FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles up
-      WHERE up.id = auth.uid() AND up.role = 'admin'
-    )
-  );
+  USING (get_my_role() = 'admin');
 
 -- Apenas admin pode inserir, atualizar e excluir perfis
 CREATE POLICY "perfil_write_admin"
   ON user_profiles FOR ALL TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles up
-      WHERE up.id = auth.uid() AND up.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM user_profiles up
-      WHERE up.id = auth.uid() AND up.role = 'admin'
-    )
-  );
+  USING (get_my_role() = 'admin')
+  WITH CHECK (get_my_role() = 'admin');
 
 -- ── Restringe DELETE em lancamentos para apenas Admin ─────────────────
 DROP POLICY IF EXISTS "auth_all_lancamentos" ON lancamentos;
@@ -73,9 +71,4 @@ CREATE POLICY "lancamentos_update_patch"
 
 CREATE POLICY "lancamentos_delete_admin"
   ON lancamentos FOR DELETE TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles up
-      WHERE up.id = auth.uid() AND up.role = 'admin'
-    )
-  );
+  USING (get_my_role() = 'admin');

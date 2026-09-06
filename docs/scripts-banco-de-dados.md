@@ -175,6 +175,8 @@ SELECT cron.schedule(
 
 Cria a tabela `user_profiles` com roles (admin, gestor, profissional), trigger de `updated_at`, RLS granular por perfil e restringe o `DELETE` em `lancamentos` apenas para Admin.
 
+> **⚠️ Importante — RLS e recursão:** As políticas de admin usam uma função `get_my_role()` com `SECURITY DEFINER` para evitar recursão infinita. Sem ela, a policy de admin consultaria `user_profiles` para verificar o role, acionando a própria policy novamente e bloqueando a query.
+
 **⚠️ Após rodar esta migration**, crie manualmente o primeiro usuário Admin:
 
 ```sql
@@ -206,6 +208,17 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER user_profiles_updated_at
   BEFORE UPDATE ON user_profiles
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Função auxiliar sem recursão (SECURITY DEFINER)
+CREATE OR REPLACE FUNCTION get_my_role()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM user_profiles WHERE id = auth.uid()
+$$;
 
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 

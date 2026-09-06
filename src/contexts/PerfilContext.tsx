@@ -26,24 +26,28 @@ interface PerfilContextValue {
 const PerfilContext = createContext<PerfilContextValue | null>(null)
 
 export function PerfilProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [perfil, setPerfil]   = useState<UserPerfil | null>(null)
   const [loading, setLoading] = useState(true)
 
   const carregar = async () => {
     if (!user) { setPerfil(null); setLoading(false); return }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('id', user.id)
       .single()
 
+    if (error) console.error('[PerfilContext]', error.message)
     setPerfil(data as UserPerfil | null)
     setLoading(false)
   }
 
-  useEffect(() => { carregar() }, [user])
+  useEffect(() => {
+    if (authLoading) return   // aguarda AuthContext terminar
+    carregar()
+  }, [user, authLoading])
 
   const can = (roles: Role[]) => !!perfil && roles.includes(perfil.role)
 
