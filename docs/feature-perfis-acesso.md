@@ -145,8 +145,11 @@ CREATE TABLE user_profiles (
 ## Status
 
 - [x] Documentação criada
-- [ ] Migration `003_user_profiles.sql`
-- [ ] `PerfilContext` e `RoleGuard`
-- [ ] Página Usuários (Admin)
-- [ ] Ajustes nas páginas existentes
-- [ ] Testes e deploy
+- [x] Migration `003_user_profiles.sql`
+- [x] `PerfilContext` e `RoleGuard`
+- [x] Edge Function `criar-usuario`
+- [x] Página Usuários (Admin)
+- [x] Ajustes nas páginas existentes (Lançamentos, Extrato, Layout, main)
+- [ ] Rodar migration no Supabase (SQL Editor)
+- [ ] Deploy Edge Function `criar-usuario`
+- [ ] Testes em produção

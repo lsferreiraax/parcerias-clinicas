@@ -4,6 +4,7 @@ import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/compone
 import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'
 import { calcularRateio, LABELS_PARCERIA } from '@/services/rateio'
+import { usePerfil } from '@/contexts/PerfilContext'
 import type { ParceriaId, FormaPagamento } from '@/types'
 
 const INIT = {
@@ -17,6 +18,7 @@ const INIT = {
 }
 
 export default function Lancamentos() {
+  const { isAdmin } = usePerfil()
   const [modal, setModal]     = useState(false)
   const [filtros, setFiltros] = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
   const [form, setForm]       = useState(INIT)
@@ -120,11 +122,13 @@ export default function Lancamentos() {
                           <CheckCircle size={15} />
                         </button>
                       )}
-                      <button
-                        onClick={() => { if (window.confirm('Excluir lançamento?')) deletar.mutate(l.id) }}
-                        className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="Excluir">
-                        <Trash2 size={15} />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => { if (window.confirm('Excluir lançamento?')) deletar.mutate(l.id) }}
+                          className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="Excluir">
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

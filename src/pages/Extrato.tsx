@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FileDown } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { Card, CardHeader, CardBody, Badge, Button, FiltroData, KpiCard } from '@/components/ui'
 import { useExtrato } from '@/hooks/useExtrato'
+import { usePerfil } from '@/contexts/PerfilContext'
 import { fmt } from '@/lib/utils'
 import type { TipoProfissional } from '@/services/extrato'
 import type { ParceriaId } from '@/types'
@@ -15,9 +16,17 @@ const PROFISSIONAIS: { value: TipoProfissional; label: string; color: string }[]
 ]
 
 export default function Extrato() {
+  const { isProfissional, perfil }      = usePerfil()
   const [profissional, setProfissional] = useState<TipoProfissional>('camta')
   const [dataInicio, setDataInicio]     = useState('')
   const [dataFim, setDataFim]           = useState('')
+
+  // Se for perfil Profissional, trava no seu próprio tipo
+  useEffect(() => {
+    if (isProfissional && perfil?.tipo_profissional) {
+      setProfissional(perfil.tipo_profissional)
+    }
+  }, [isProfissional, perfil])
 
   const filtro = {
     ...(dataInicio ? { dataInicio } : {}),
@@ -73,22 +82,24 @@ export default function Extrato() {
         </div>
       </div>
 
-      {/* Seletor de profissional */}
-      <div className="flex gap-2 flex-wrap">
-        {PROFISSIONAIS.map(p => (
-          <button
-            key={p.value}
-            onClick={() => setProfissional(p.value)}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
-              profissional === p.value
-                ? `${p.color} text-white shadow`
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      {/* Seletor de profissional — oculto para perfil Profissional */}
+      {!isProfissional && (
+        <div className="flex gap-2 flex-wrap">
+          {PROFISSIONAIS.map(p => (
+            <button
+              key={p.value}
+              onClick={() => setProfissional(p.value)}
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+                profissional === p.value
+                  ? `${p.color} text-white shadow`
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-4">
