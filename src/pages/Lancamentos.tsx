@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, Trash2, CheckCircle } from 'lucide-react'
-import { Card, Button, Badge, Modal, Input, Select } from '@/components/ui'
+import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/components/ui'
 import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'
 import { calcularRateio, LABELS_PARCERIA } from '@/services/rateio'
@@ -18,7 +18,7 @@ const INIT = {
 
 export default function Lancamentos() {
   const [modal, setModal]     = useState(false)
-  const [filtros, setFiltros] = useState<{ parceria?: string; status?: string }>({})
+  const [filtros, setFiltros] = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
   const [form, setForm]       = useState(INIT)
 
   const { data: lancamentos, isLoading } = useLancamentos(filtros)
@@ -52,7 +52,7 @@ export default function Lancamentos() {
       </div>
 
       <Card>
-        <div className="px-6 py-4 flex gap-4 flex-wrap">
+        <div className="px-6 py-4 flex gap-4 flex-wrap items-center">
           <select
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
             onChange={e => setFiltros(f => ({ ...f, parceria: e.target.value || undefined }))}>
@@ -67,6 +67,14 @@ export default function Lancamentos() {
             <option value="pago">Pago</option>
             <option value="cancelado">Cancelado</option>
           </select>
+          <div className="h-5 border-l border-gray-200" />
+          <FiltroData
+            dataInicio={filtros.dataInicio ?? ''}
+            dataFim={filtros.dataFim ?? ''}
+            onChangeInicio={v => setFiltros(f => ({ ...f, dataInicio: v || undefined }))}
+            onChangeFim={v => setFiltros(f => ({ ...f, dataFim: v || undefined }))}
+            onLimpar={() => setFiltros(f => ({ ...f, dataInicio: undefined, dataFim: undefined }))}
+          />
         </div>
       </Card>
 

@@ -1,15 +1,27 @@
+import { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { Card, CardHeader, CardBody, Badge } from '@/components/ui'
+import { FileDown } from 'lucide-react'
+import { Card, CardHeader, CardBody, Badge, Button, FiltroData } from '@/components/ui'
 import { useResumoParceria, useResumoProfissional } from '@/hooks/useResumo'
 import { fmt } from '@/lib/utils'
+import { exportarResumoExcel } from '@/lib/exportarExcel'
 import type { ParceriaId } from '@/types'
 
 const PROF_LABELS: Record<string, string>  = { camta: 'Camta', medico: 'Médico', psi1: 'Psi1', psi2: 'Psi2' }
 const PROF_COLORS: Record<string, string>  = { camta: 'text-blue-700', medico: 'text-green-700', psi1: 'text-yellow-700', psi2: 'text-orange-700' }
 
 export default function Resumo() {
-  const { data: parceria }     = useResumoParceria()
-  const { data: profissional } = useResumoProfissional()
+  const [dataInicio, setDataInicio] = useState('')
+  const [dataFim, setDataFim]       = useState('')
+
+  const filtro = {
+    ...(dataInicio ? { dataInicio } : {}),
+    ...(dataFim    ? { dataFim }    : {}),
+  }
+  const filtroAtivo = Object.keys(filtro).length > 0 ? filtro : undefined
+
+  const { data: parceria }     = useResumoParceria(filtroAtivo)
+  const { data: profissional } = useResumoProfissional(filtroAtivo)
 
   const totalGeral   = (profissional ?? []).reduce((s, p) => s + Number(p.total), 0)
 
@@ -23,9 +35,28 @@ export default function Resumo() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1F3864]">Resumo Financeiro</h1>
-        <p className="text-gray-500 text-sm mt-1">Consolidado de rateio por parceria e profissional</p>
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1F3864]">Resumo Financeiro</h1>
+          <p className="text-gray-500 text-sm mt-1">Consolidado de rateio por parceria e profissional</p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <FiltroData
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+            onChangeInicio={setDataInicio}
+            onChangeFim={setDataFim}
+            onLimpar={() => { setDataInicio(''); setDataFim('') }}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => exportarResumoExcel(parceria ?? [], profissional ?? [])}
+            disabled={!parceria || !profissional}
+          >
+            <FileDown size={16} />
+            Exportar Excel
+          </Button>
+        </div>
       </div>
 
       {(parceria ?? []).map(r => (

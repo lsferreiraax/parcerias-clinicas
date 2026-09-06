@@ -1,13 +1,21 @@
 import { useState } from 'react'
 import { CheckCircle, AlertCircle } from 'lucide-react'
-import { Card, Badge, KpiCard } from '@/components/ui'
+import { Card, Badge, KpiCard, FiltroData } from '@/components/ui'
 import { useParcelas, useMarcarParcelaPaga } from '@/hooks/useResumo'
 import { fmt } from '@/lib/utils'
 import type { ParceriaId } from '@/types'
 
 export default function Parcelas() {
   const [filtroStatus, setFiltroStatus] = useState('')
-  const { data: parcelas, isLoading }   = useParcelas(filtroStatus ? { status: filtroStatus } : undefined)
+  const [dataInicio, setDataInicio]     = useState('')
+  const [dataFim, setDataFim]           = useState('')
+
+  const filtros = {
+    ...(filtroStatus ? { status: filtroStatus } : {}),
+    ...(dataInicio   ? { dataInicio }           : {}),
+    ...(dataFim      ? { dataFim }              : {}),
+  }
+  const { data: parcelas, isLoading } = useParcelas(Object.keys(filtros).length ? filtros : undefined)
   const marcarPaga = useMarcarParcelaPaga()
 
   const hoje      = new Date().toISOString().split('T')[0]
@@ -37,7 +45,7 @@ export default function Parcelas() {
       )}
 
       <Card>
-        <div className="px-6 py-4 flex gap-3 flex-wrap">
+        <div className="px-6 py-4 flex gap-3 flex-wrap items-center">
           {[
             { val: '',         label: 'Todas' },
             { val: 'pendente', label: 'Pendente' },
@@ -53,6 +61,14 @@ export default function Parcelas() {
               {label}
             </button>
           ))}
+          <div className="h-5 border-l border-gray-200" />
+          <FiltroData
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+            onChangeInicio={setDataInicio}
+            onChangeFim={setDataFim}
+            onLimpar={() => { setDataInicio(''); setDataFim('') }}
+          />
         </div>
       </Card>
 

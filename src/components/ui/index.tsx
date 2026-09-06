@@ -1,3 +1,4 @@
+export { FiltroData } from './FiltroData'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 import { ReactNode } from 'react'

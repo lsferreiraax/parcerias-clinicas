@@ -1,13 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getResumoPorParceria, getResumoProfissional, getKPIs } from '@/services/resumo'
+import type { FiltroResumo } from '@/services/resumo'
 import { listarParcelas, marcarParcelaPaga, atualizarStatusParcela } from '@/services/parcelas'
 
-export function useResumoParceria() {
-  return useQuery({ queryKey: ['resumo-parceria'], queryFn: getResumoPorParceria })
+export function useResumoParceria(filtro?: FiltroResumo) {
+  return useQuery({ queryKey: ['resumo-parceria', filtro], queryFn: () => getResumoPorParceria(filtro) })
 }
 
-export function useResumoProfissional() {
-  return useQuery({ queryKey: ['resumo-profissional'], queryFn: getResumoProfissional })
+export function useResumoProfissional(filtro?: FiltroResumo) {
+  return useQuery({ queryKey: ['resumo-profissional', filtro], queryFn: () => getResumoProfissional(filtro) })
 }
 
 export function useKPIs() {
