@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode, AlertTriangle } from 'lucide-react'
 import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/components/ui'
-import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento, useEditarLancamento } from '@/hooks/useLancamentos'
+import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento, useEditarLancamento, useDeletarEmLote } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'
 import { calcularRateio, LABELS_PARCERIA } from '@/services/rateio'
 import { usePerfil } from '@/contexts/PerfilContext'
@@ -134,11 +134,14 @@ export default function Lancamentos() {
   const { isAdmin, isGestor } = usePerfil()
   const podeEditar = isAdmin || isGestor
 
-  const [modal, setModal]         = useState(false)
-  const [modalEdicao, setModalEdicao] = useState(false)
+  const [modal, setModal]               = useState(false)
+  const [modalEdicao, setModalEdicao]   = useState(false)
+  const [modalExclusao, setModalExclusao] = useState(false)
   const [lancamentoEditando, setLancamentoEditando] = useState<Lancamento | null>(null)
-  const [filtros, setFiltros]     = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
-  const [form, setForm]           = useState(INIT)
+  const [filtros, setFiltros]           = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
+  const [form, setForm]                 = useState(INIT)
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
+  const [motivoExclusao, setMotivoExclusao] = useState('')
   const [formEdicao, setFormEdicao] = useState<FormEdicao>({
     data_atendimento: '',
     paciente: '',
@@ -151,10 +154,45 @@ export default function Lancamentos() {
   })
 
   const { data: lancamentos, isLoading } = useLancamentos(filtros)
-  const criar     = useCriarLancamento()
-  const atualizar = useAtualizarStatusLancamento()
-  const deletar   = useDeletarLancamento()
-  const editar    = useEditarLancamento()
+  const criar          = useCriarLancamento()
+  const atualizar      = useAtualizarStatusLancamento()
+  const deletar        = useDeletarLancamento()
+  const editar         = useEditarLancamento()
+  const deletarLote    = useDeletarEmLote()
+
+  // Lançamentos disponíveis para seleção (apenas não-pagos)
+  const selecionaveis  = (lancamentos ?? []).filter(l => l.status !== 'pago')
+  const todosSelecionados = selecionaveis.length > 0 && selecionaveis.every(l => selecionados.has(l.id))
+  const algunsSelecionados = selecionaveis.some(l => selecionados.has(l.id))
+
+  const toggleSelecionado = (id: string, status: string) => {
+    if (status === 'pago') return
+    setSelecionados(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleTodos = () => {
+    if (todosSelecionados) {
+      setSelecionados(new Set())
+    } else {
+      setSelecionados(new Set(selecionaveis.map(l => l.id)))
+    }
+  }
+
+  const abrirModalExclusao = () => {
+    setMotivoExclusao('')
+    setModalExclusao(true)
+  }
+
+  const handleExcluirLote = async () => {
+    if (!motivoExclusao.trim() || selecionados.size === 0) return
+    await deletarLote.mutateAsync({ ids: Array.from(selecionados), motivo: motivoExclusao.trim() })
+    setSelecionados(new Set())
+    setModalExclusao(false)
+  }
 
   const rateioPreview = form.valor_total > 0
     ? calcularRateio(form.parceria_id, form.valor_total)
@@ -226,7 +264,18 @@ export default function Lancamentos() {
           <h1 className="text-2xl font-bold text-[#1F3864]">Lançamentos</h1>
           <p className="text-gray-500 text-sm mt-1">Registro de atendimentos e rateio automático</p>
         </div>
-        <Button onClick={() => setModal(true)}><Plus size={16} /> Novo Lançamento</Button>
+        <div className="flex gap-2">
+          {podeEditar && selecionados.size > 0 && (
+            <Button
+              onClick={abrirModalExclusao}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <Trash2 size={16} />
+              Excluir selecionados ({selecionados.size})
+            </Button>
+          )}
+          <Button onClick={() => setModal(true)}><Plus size={16} /> Novo Lançamento</Button>
+        </div>
       </div>
 
       <Card>
@@ -261,6 +310,18 @@ export default function Lancamentos() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
+                {podeEditar && (
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={todosSelecionados}
+                      ref={el => { if (el) el.indeterminate = algunsSelecionados && !todosSelecionados }}
+                      onChange={toggleTodos}
+                      className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864]"
+                      title="Selecionar todos (exceto pagos)"
+                    />
+                  </th>
+                )}
                 {['Data','Paciente','Parceria','Pagamento','Meio','Valor Total','Camta','Médico','Psi1','Psi2','Dt. Pagamento','Status','Ações'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap">{h}</th>
                 ))}
@@ -268,13 +329,28 @@ export default function Lancamentos() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading && (
-                <tr><td colSpan={13} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
+                <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
               )}
               {!isLoading && (!lancamentos || lancamentos.length === 0) && (
-                <tr><td colSpan={13} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
+                <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
               )}
-              {(lancamentos ?? []).map(l => (
-                <tr key={l.id} className="hover:bg-gray-50">
+              {(lancamentos ?? []).map(l => {
+                const isSelecionado = selecionados.has(l.id)
+                const isPago        = l.status === 'pago'
+                return (
+                <tr key={l.id} className={`hover:bg-gray-50 ${isSelecionado ? 'bg-red-50' : ''}`}>
+                  {podeEditar && (
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelecionado}
+                        disabled={isPago}
+                        onChange={() => toggleSelecionado(l.id, l.status)}
+                        className="rounded border-gray-300 text-red-600 focus:ring-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={isPago ? 'Lançamentos pagos não podem ser excluídos' : ''}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3 whitespace-nowrap">{fmt.data(l.data_atendimento)}</td>
                   <td className="px-4 py-3 font-medium">
                     <div className="flex items-center gap-1.5">
@@ -324,11 +400,56 @@ export default function Lancamentos() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
       </Card>
+
+      {/* Modal: Excluir em lote */}
+      <Modal open={modalExclusao} onClose={() => setModalExclusao(false)} title="Excluir Lançamentos">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <AlertTriangle size={18} className="text-red-600 mt-0.5 shrink-0" />
+            <div className="text-sm text-red-800">
+              <p className="font-semibold mb-1">Ação irreversível</p>
+              <p>
+                Você está prestes a excluir <strong>{selecionados.size} lançamento(s)</strong> e todas as
+                parcelas associadas. Esta operação não pode ser desfeita.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Motivo da exclusão <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+              rows={3}
+              placeholder="Descreva o motivo da exclusão..."
+              value={motivoExclusao}
+              onChange={e => setMotivoExclusao(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <Button variant="secondary" className="flex-1" onClick={() => setModalExclusao(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="flex-1 bg-red-600 hover:bg-red-700"
+              loading={deletarLote.isPending}
+              disabled={!motivoExclusao.trim()}
+              onClick={handleExcluirLote}
+            >
+              <Trash2 size={15} />
+              Confirmar exclusão
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal: Novo Lançamento */}
       <Modal open={modal} onClose={() => setModal(false)} title="Novo Lançamento">

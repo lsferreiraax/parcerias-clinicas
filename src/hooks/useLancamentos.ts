@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { criarLancamento, listarLancamentos, atualizarStatusLancamento, deletarLancamento, editarLancamento } from '@/services/lancamentos'
+import { criarLancamento, listarLancamentos, atualizarStatusLancamento, deletarLancamento, editarLancamento, deletarEmLote } from '@/services/lancamentos'
 import type { NovoLancamento, EdicaoLancamento } from '@/services/lancamentos'
 
 export function useLancamentos(filtros?: Parameters<typeof listarLancamentos>[0]) {
@@ -30,6 +30,20 @@ export function useDeletarLancamento() {
   return useMutation({
     mutationFn: (id: string) => deletarLancamento(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['lancamentos'] }),
+  })
+}
+
+export function useDeletarEmLote() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ids, motivo }: { ids: string[]; motivo: string }) => deletarEmLote(ids, motivo),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lancamentos'] })
+      qc.invalidateQueries({ queryKey: ['kpis'] })
+      qc.invalidateQueries({ queryKey: ['resumo-parceria'] })
+      qc.invalidateQueries({ queryKey: ['kpi-comparativo'] })
+      qc.invalidateQueries({ queryKey: ['receita-mensal'] })
+    },
   })
 }
 

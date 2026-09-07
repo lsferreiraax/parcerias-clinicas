@@ -73,6 +73,18 @@ export interface RateioResult {
   psi2_valor: number
 }
 
+export interface LancamentoLog {
+  id: string
+  lancamento_id: string
+  paciente: string
+  parceria_id: string
+  valor_total: number
+  num_parcelas: number
+  motivo: string
+  excluido_por: string | null
+  excluido_em: string
+}
+
 export interface ParcelaLog {
   id: string
   parcela_id: string

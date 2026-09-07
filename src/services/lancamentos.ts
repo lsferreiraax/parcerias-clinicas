@@ -123,3 +123,33 @@ export async function deletarLancamento(id: string) {
   const { error } = await supabase.from('lancamentos').delete().eq('id', id)
   if (error) throw error
 }
+
+export async function deletarEmLote(ids: string[], motivo: string) {
+  // Busca dados para o log antes de excluir
+  const { data: lancamentos, error: errBusca } = await supabase
+    .from('lancamentos')
+    .select('id, paciente, parceria_id, valor_total, num_parcelas')
+    .in('id', ids)
+  if (errBusca) throw errBusca
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Grava log de exclusão
+  const logs = (lancamentos ?? []).map(l => ({
+    lancamento_id: l.id,
+    paciente:      l.paciente,
+    parceria_id:   l.parceria_id,
+    valor_total:   l.valor_total,
+    num_parcelas:  l.num_parcelas ?? 1,
+    motivo,
+    excluido_por:  user?.id ?? null,
+  }))
+  if (logs.length > 0) {
+    const { error: errLog } = await supabase.from('lancamentos_log').insert(logs)
+    if (errLog) throw errLog
+  }
+
+  // Exclui lançamentos (parcelas removidas por CASCADE)
+  const { error } = await supabase.from('lancamentos').delete().in('id', ids)
+  if (error) throw error
+}

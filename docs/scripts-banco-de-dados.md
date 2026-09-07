@@ -467,3 +467,38 @@ npm install jspdf jspdf-autotable
 ```
 
 Logo utilizado: `logotipo/logo-elleve.jpeg` (copiado para `public/logo.jpeg` para ser servido em runtime)
+
+---
+
+## 009 — Audit log de exclusão de lançamentos + CASCADE nas parcelas
+
+**Arquivo:** `supabase/migrations/009_lancamentos_log_cascade.sql`  
+**Quando rodar:** Antes do deploy da feature de exclusão em lote.
+
+### Tabela `lancamentos_log`
+Registra todas as exclusões de lançamentos com motivo, dados do registro e usuário responsável. Mantém o histórico mesmo após o lançamento ser deletado.
+
+```sql
+CREATE TABLE IF NOT EXISTS lancamentos_log (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  lancamento_id UUID        NOT NULL,
+  paciente      TEXT        NOT NULL,
+  parceria_id   TEXT        NOT NULL,
+  valor_total   NUMERIC     NOT NULL,
+  num_parcelas  INT         NOT NULL DEFAULT 1,
+  motivo        TEXT        NOT NULL,
+  excluido_por  UUID        REFERENCES auth.users(id),
+  excluido_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+**RLS:** Leitura restrita a admin e gestor. Inserção permitida a qualquer autenticado (via serviço).
+
+### CASCADE nas parcelas
+Garante que ao excluir um lançamento, todas as parcelas associadas sejam removidas automaticamente:
+
+```sql
+ALTER TABLE parcelas DROP CONSTRAINT IF EXISTS parcelas_lancamento_id_fkey;
+ALTER TABLE parcelas ADD CONSTRAINT parcelas_lancamento_id_fkey
+  FOREIGN KEY (lancamento_id) REFERENCES lancamentos(id) ON DELETE CASCADE;
+```
