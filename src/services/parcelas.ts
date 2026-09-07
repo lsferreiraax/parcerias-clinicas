@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Parcela } from '@/types'
+import type { Parcela, ParcelaLog } from '@/types'
 
 export async function listarParcelas(filtros?: {
   lancamentoId?: string
@@ -37,4 +37,44 @@ export async function atualizarStatusParcela(id: string, status: string, dataPag
     .update({ status, ...(dataPagamento ? { data_pagamento: dataPagamento } : {}) })
     .eq('id', id)
   if (error) throw error
+}
+
+export async function baixarEmLote(ids: string[]) {
+  const hoje = new Date().toISOString().split('T')[0]
+  const { error } = await supabase
+    .from('parcelas')
+    .update({ status: 'pago', data_pagamento: hoje })
+    .in('id', ids)
+  if (error) throw error
+}
+
+export async function renegociarParcela(id: string, novaData: string, observacoes: string) {
+  const { error } = await supabase
+    .from('parcelas')
+    .update({ status: 'renegociada', data_vencimento: novaData, observacoes })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function buscarHistorico(parcelaId: string): Promise<ParcelaLog[]> {
+  const { data, error } = await supabase
+    .from('parcelas_log')
+    .select('*, user_profiles(nome)')
+    .eq('parcela_id', parcelaId)
+    .order('alterado_em', { ascending: false })
+  if (error) throw error
+  return data as ParcelaLog[]
+}
+
+export async function contarParcelasAlerta(): Promise<number> {
+  const hoje  = new Date().toISOString().split('T')[0]
+  const amanha = new Date(Date.now() + 86_400_000).toISOString().split('T')[0]
+  const { count, error } = await supabase
+    .from('parcelas')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pendente')
+    .lte('data_vencimento', amanha)
+    .gte('data_vencimento', hoje)
+  if (error) throw error
+  return count ?? 0
 }

@@ -119,8 +119,9 @@ CREATE TRIGGER parcelas_audit
 
 ## Status
 
-- [ ] Documentação criada
-- [ ] Migration `004_parcelas_log.sql`
-- [ ] Componentes de baixa em lote e histórico
-- [ ] Alerta in-app no Layout
+- [x] Documentação criada
+- [x] Migration `004_parcelas_log.sql`
+- [x] Componentes de baixa em lote, histórico e renegociação
+- [x] Alerta in-app no Layout (badge vermelho)
+- [ ] Rodar migration no Supabase (SQL Editor)
 - [ ] Testes e deploy

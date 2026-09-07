@@ -1,7 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom"
-import { LayoutDashboard, ClipboardList, CreditCard, BarChart3, FileText, Users, LogOut } from "lucide-react"
+import { LayoutDashboard, ClipboardList, CreditCard, BarChart3, FileText, Users, LogOut, Settings } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { usePerfil } from "@/contexts/PerfilContext"
+import { useParcelasAlerta } from "@/hooks/useResumo"
 import type { Role } from "@/contexts/PerfilContext"
 
 interface NavItem {
@@ -9,22 +10,25 @@ interface NavItem {
   label: string
   icon: React.ElementType
   roles: Role[]
+  badge?: boolean
 }
 
 const nav: NavItem[] = [
-  { to: '/',            label: 'Dashboard',   icon: LayoutDashboard, roles: ['admin', 'gestor'] },
-  { to: '/lancamentos', label: 'Lançamentos', icon: ClipboardList,   roles: ['admin', 'gestor'] },
-  { to: '/parcelas',    label: 'Parcelas',    icon: CreditCard,      roles: ['admin', 'gestor'] },
-  { to: '/resumo',      label: 'Resumo',      icon: BarChart3,       roles: ['admin', 'gestor'] },
-  { to: '/extrato',     label: 'Extrato',     icon: FileText,        roles: ['admin', 'gestor', 'profissional'] },
-  { to: '/usuarios',    label: 'Usuários',    icon: Users,           roles: ['admin'] },
+  { to: '/',              label: 'Dashboard',     icon: LayoutDashboard, roles: ['admin', 'gestor'] },
+  { to: '/lancamentos',   label: 'Lançamentos',   icon: ClipboardList,   roles: ['admin', 'gestor'] },
+  { to: '/parcelas',      label: 'Parcelas',      icon: CreditCard,      roles: ['admin', 'gestor'], badge: true },
+  { to: '/resumo',        label: 'Resumo',        icon: BarChart3,       roles: ['admin', 'gestor'] },
+  { to: '/extrato',       label: 'Extrato',       icon: FileText,        roles: ['admin', 'gestor', 'profissional'] },
+  { to: '/usuarios',      label: 'Usuários',      icon: Users,           roles: ['admin'] },
+  { to: '/configuracoes', label: 'Configurações', icon: Settings,        roles: ['admin'] },
 ]
 
 const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', gestor: 'Gestor', profissional: 'Profissional' }
 
 export default function Layout() {
-  const { user, signOut }    = useAuth()
-  const { perfil, can }      = usePerfil()
+  const { user, signOut }        = useAuth()
+  const { perfil, can }          = usePerfil()
+  const { data: alertaCount = 0 } = useParcelasAlerta()
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -35,7 +39,7 @@ export default function Layout() {
           <p className="text-blue-300 text-xs mt-1">Sistema de Rateio</p>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          {nav.filter(item => can(item.roles)).map(({ to, label, icon: Icon }) => (
+          {nav.filter(item => can(item.roles)).map(({ to, label, icon: Icon, badge }) => (
             <NavLink
               key={to}
               to={to}
@@ -49,7 +53,12 @@ export default function Layout() {
               }
             >
               <Icon size={18} />
-              {label}
+              <span className="flex-1">{label}</span>
+              {badge && alertaCount > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {alertaCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -70,7 +79,7 @@ export default function Layout() {
             <LogOut size={15} />
             Sair
           </button>
-          <p className="text-xs text-blue-400">v1.0.0 · {new Date().getFullYear()}</p>
+          <p className="text-xs text-blue-400">v1.1.0 · {new Date().getFullYear()}</p>
         </div>
       </aside>
 

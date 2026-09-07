@@ -256,6 +256,97 @@ CREATE POLICY "lancamentos_delete_admin"
 
 ---
 
+## 004 — Gestão Avançada de Parcelas (Audit Log + Renegociação)
+
+**Arquivo:** `supabase/migrations/004_parcelas_log.sql`  
+**Quando rodar:** Após a migration 003.
+
+Adiciona o status `'renegociada'` à constraint da tabela `parcelas`, cria a tabela `parcelas_log` para audit log e instala o trigger que registra automaticamente alterações de `status` e `data_vencimento`.
+
+```sql
+-- Adiciona status 'renegociada' ao CHECK
+ALTER TABLE parcelas DROP CONSTRAINT IF EXISTS parcelas_status_check;
+ALTER TABLE parcelas ADD CONSTRAINT parcelas_status_check
+  CHECK (status IN ('pendente','pago','vencido','renegociada'));
+
+-- Tabela de audit log
+CREATE TABLE IF NOT EXISTS parcelas_log (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  parcela_id     UUID NOT NULL REFERENCES parcelas(id) ON DELETE CASCADE,
+  campo_alterado TEXT NOT NULL,
+  valor_anterior TEXT,
+  valor_novo     TEXT,
+  alterado_por   UUID REFERENCES auth.users(id),
+  alterado_em    TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE parcelas_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "log_read_admin_gestor" ON parcelas_log
+  FOR SELECT TO authenticated USING (get_my_role() IN ('admin', 'gestor'));
+CREATE POLICY "log_insert_auth" ON parcelas_log
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+-- Trigger de audit (SECURITY DEFINER para ter acesso a auth.uid())
+CREATE OR REPLACE FUNCTION log_parcela_changes()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF OLD.status IS DISTINCT FROM NEW.status THEN
+    INSERT INTO parcelas_log (parcela_id, campo_alterado, valor_anterior, valor_novo, alterado_por)
+    VALUES (NEW.id, 'status', OLD.status, NEW.status, auth.uid());
+  END IF;
+  IF OLD.data_vencimento IS DISTINCT FROM NEW.data_vencimento THEN
+    INSERT INTO parcelas_log (parcela_id, campo_alterado, valor_anterior, valor_novo, alterado_por)
+    VALUES (NEW.id, 'data_vencimento', OLD.data_vencimento::TEXT, NEW.data_vencimento::TEXT, auth.uid());
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS parcelas_audit ON parcelas;
+CREATE TRIGGER parcelas_audit
+  AFTER UPDATE ON parcelas FOR EACH ROW EXECUTE FUNCTION log_parcela_changes();
+```
+
+---
+
+## 005 — Configurações do Sistema
+
+**Arquivo:** `supabase/migrations/005_configuracoes.sql`  
+**Quando rodar:** Após a migration 003.
+
+Adiciona o campo `ativo` à tabela `parcerias` e cria a tabela `configuracoes` (singleton — apenas uma linha com `id = 1`) para armazenar dados da clínica e preferências de notificação.
+
+```sql
+-- Adiciona campo ativo em parcerias
+ALTER TABLE parcerias ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT TRUE;
+
+-- Tabela de configurações (singleton)
+CREATE TABLE IF NOT EXISTS configuracoes (
+  id                  INT PRIMARY KEY DEFAULT 1,
+  nome_clinica        TEXT NOT NULL DEFAULT 'Parcerias Clínicas',
+  logo_url            TEXT,
+  email_notificacao   TEXT[] DEFAULT ARRAY[]::TEXT[],
+  notificacao_ativa   BOOLEAN DEFAULT TRUE,
+  fuso_horario        TEXT DEFAULT 'America/Sao_Paulo',
+  updated_at          TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE configuracoes ADD CONSTRAINT IF NOT EXISTS configuracoes_singleton CHECK (id = 1);
+
+CREATE TRIGGER configuracoes_updated_at
+  BEFORE UPDATE ON configuracoes
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+INSERT INTO configuracoes DEFAULT VALUES ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE configuracoes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "config_read_auth"   ON configuracoes FOR SELECT TO authenticated USING (true);
+CREATE POLICY "config_write_admin" ON configuracoes FOR ALL TO authenticated
+  USING (get_my_role() = 'admin') WITH CHECK (get_my_role() = 'admin');
+```
+
+---
+
 ## Edge Functions
 
 ### `calcular-rateio`

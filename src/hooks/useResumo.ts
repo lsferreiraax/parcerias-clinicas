@@ -1,7 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getResumoPorParceria, getResumoProfissional, getKPIs } from '@/services/resumo'
 import type { FiltroResumo } from '@/services/resumo'
-import { listarParcelas, marcarParcelaPaga, atualizarStatusParcela } from '@/services/parcelas'
+import {
+  listarParcelas, marcarParcelaPaga, atualizarStatusParcela,
+  baixarEmLote, renegociarParcela, buscarHistorico, contarParcelasAlerta,
+} from '@/services/parcelas'
 
 export function useResumoParceria(filtro?: FiltroResumo) {
   return useQuery({ queryKey: ['resumo-parceria', filtro], queryFn: () => getResumoPorParceria(filtro) })
@@ -43,5 +46,44 @@ export function useAtualizarStatusParcela() {
       qc.invalidateQueries({ queryKey: ['parcelas'] })
       qc.invalidateQueries({ queryKey: ['kpis'] })
     },
+  })
+}
+
+export function useBaixarEmLote() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => baixarEmLote(ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['parcelas'] })
+      qc.invalidateQueries({ queryKey: ['kpis'] })
+      qc.invalidateQueries({ queryKey: ['parcelas-alerta'] })
+    },
+  })
+}
+
+export function useRenegociarParcela() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, novaData, observacoes }: { id: string; novaData: string; observacoes: string }) =>
+      renegociarParcela(id, novaData, observacoes),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['parcelas'] })
+    },
+  })
+}
+
+export function useHistoricoParcela(parcelaId: string | null) {
+  return useQuery({
+    queryKey: ['historico-parcela', parcelaId],
+    queryFn: () => buscarHistorico(parcelaId!),
+    enabled: !!parcelaId,
+  })
+}
+
+export function useParcelasAlerta() {
+  return useQuery({
+    queryKey: ['parcelas-alerta'],
+    queryFn: contarParcelasAlerta,
+    refetchInterval: 5 * 60_000,
   })
 }

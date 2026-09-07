@@ -94,9 +94,10 @@ ORDER BY 1;
 
 ## Status
 
-- [ ] Documentação criada
-- [ ] Instalar Recharts (`npm install recharts`)
-- [ ] Implementar queries em `dashboard.ts`
-- [ ] Implementar componentes de gráfico
-- [ ] Atualizar página Dashboard
+- [x] Documentação criada
+- [x] Recharts já instalado no projeto
+- [x] Implementar queries em `dashboard.ts` (receita mensal, inadimplência, KPI comparativo, ranking)
+- [x] Gráficos de barras empilhadas (receita 12 meses) e linhas (inadimplência)
+- [x] KPIs comparativos com variação % vs mês anterior
+- [x] Ranking de profissionais com seletor de mês
 - [ ] Testes e deploy
