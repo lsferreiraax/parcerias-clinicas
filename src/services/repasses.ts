@@ -19,8 +19,6 @@ export async function listarRepasses(filtro?: FiltroRepasse): Promise<Repasse[]>
 
   if (filtro?.tipo)   q = q.eq('tipo', filtro.tipo)
   if (filtro?.status) q = q.eq('status', filtro.status)
-  if (filtro?.dataInicio) q = q.gte('lancamentos.data_atendimento', filtro.dataInicio)
-  if (filtro?.dataFim)    q = q.lte('lancamentos.data_atendimento', filtro.dataFim)
   if (filtro?.dataRepasseInicio) q = q.gte('data_repasse', filtro.dataRepasseInicio)
   if (filtro?.dataRepasseFim)    q = q.lte('data_repasse', filtro.dataRepasseFim)
 
@@ -29,7 +27,14 @@ export async function listarRepasses(filtro?: FiltroRepasse): Promise<Repasse[]>
 
   let result = (data ?? []) as Repasse[]
 
-  // Filtro de paciente no cliente (join field não filtrável via .eq no Supabase)
+  // Filtros em campos da tabela relacionada (lancamentos) feitos no cliente
+  // pois o Supabase PostgREST não suporta filtrar em colunas de joins embutidos
+  if (filtro?.dataInicio) {
+    result = result.filter(r => (r.lancamentos?.data_atendimento ?? '') >= filtro.dataInicio!)
+  }
+  if (filtro?.dataFim) {
+    result = result.filter(r => (r.lancamentos?.data_atendimento ?? '') <= filtro.dataFim!)
+  }
   if (filtro?.paciente) {
     const termo = filtro.paciente.toLowerCase()
     result = result.filter(r =>
