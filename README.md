@@ -65,28 +65,57 @@ VERCEL_ORG_ID
 VERCEL_PROJECT_ID
 ```
 
+## Telas do sistema
+
+| Rota           | Descrição                                      | Roles            |
+|----------------|------------------------------------------------|------------------|
+| `/`            | Dashboard com KPIs e gráficos                  | admin, gestor    |
+| `/lancamentos` | CRUD de atendimentos com cálculo de rateio     | admin, gestor    |
+| `/parcelas`    | Baixa de parcelas de pagamento                 | admin, gestor    |
+| `/resumo`      | Consolidado financeiro por parceria            | admin, gestor    |
+| `/extrato`     | Visão do profissional sobre seus atendimentos  | todos            |
+| `/repasses`    | Controle de repasses financeiros por profissional | admin, gestor |
+| `/relatorios`  | Geração de PDF e Excel                         | admin, gestor    |
+| `/usuarios`    | Gerenciamento de usuários                      | admin            |
+| `/configuracoes` | Configuração das parcerias                   | admin            |
+
 ## Estrutura do projeto
 
 ```
 src/
 ├── components/
 │   ├── layout/      # Sidebar + Layout principal
-│   └── ui/          # Badge, Card, Button, Modal, Input...
-├── hooks/           # React Query hooks
+│   └── ui/          # Badge, Card, Button, Modal, FiltroData...
+├── hooks/           # React Query hooks (por feature)
 ├── lib/             # Supabase client + utils
-├── pages/           # Dashboard, Lançamentos, Parcelas, Resumo
-├── services/        # Lógica de negócio (rateio, CRUD)
-└── types/           # Tipos TypeScript
+├── pages/           # Uma página por rota
+├── services/        # Lógica de negócio (rateio, repasses, CRUD)
+└── types/           # Tipos TypeScript globais
 
 supabase/
-├── migrations/      # Schema SQL
-└── functions/       # Edge Functions (rateio server-side)
+├── migrations/      # Schema SQL (001 a 011)
+└── functions/       # Edge Functions
+
+docs/
+├── historico-features.md      # Histórico de todas as features implementadas
+└── scripts-banco-de-dados.md  # Todas as migrations e scripts SQL com explicação
 ```
 
-## Fluxo de uso (Secretária)
+## Fluxo de uso
 
-1. **Novo atendimento** → aba Lançamentos → botão "Novo Lançamento"
-2. Selecionar parceria (A, B ou C) e preencher valor → rateio calculado automaticamente
-3. Para parcelados → parcelas geradas automaticamente na aba **Parcelas**
-4. Baixar pagamentos → ícone ✓ em cada linha
+### Secretária
+1. **Novo atendimento** → Lançamentos → "Novo Lançamento"
+2. Selecionar parceria e preencher valor → rateio calculado automaticamente
+3. Registrar meio de pagamento (Cartão, Pix, Dinheiro) e data de pagamento
+4. Para parcelados → parcelas geradas automaticamente na aba **Parcelas**
 5. **Resumo** → visão consolidada por parceria e profissional
+
+### Gestor/Admin
+1. **Repasses** → acompanhar e conciliar os repasses por profissional
+2. **Relatórios** → gerar PDF ou Excel para prestação de contas
+3. Exclusão de lançamentos em lote (com motivo obrigatório + auditoria)
+
+## Documentação
+
+- [Histórico de features](docs/historico-features.md)
+- [Scripts e migrations de banco](docs/scripts-banco-de-dados.md)
