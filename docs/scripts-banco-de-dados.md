@@ -347,6 +347,32 @@ CREATE POLICY "config_write_admin" ON configuracoes FOR ALL TO authenticated
 
 ---
 
+## 006 — Agendamento de Backup Diário
+
+**Arquivo:** `supabase/migrations/006_cron_backup.sql`  
+**Quando rodar:** Após a Edge Function `backup-banco` estar deployada e as extensões `pg_cron` e `pg_net` habilitadas.
+
+Agenda o backup automático diário às **03:00 BRT** (06:00 UTC).
+
+```sql
+SELECT cron.schedule(
+  'backup-diario-banco',
+  '0 6 * * *',
+  $$
+    SELECT net.http_post(
+      url     := current_setting('app.supabase_url') || '/functions/v1/backup-banco',
+      headers := jsonb_build_object(
+        'Content-Type',  'application/json',
+        'Authorization', 'Bearer ' || current_setting('app.service_role_key')
+      ),
+      body    := '{}'::jsonb
+    )
+  $$
+);
+```
+
+---
+
 ## Edge Functions
 
 ### `calcular-rateio`
@@ -375,4 +401,25 @@ Convida um novo usuário via `auth.admin.inviteUserByEmail` e cria o perfil em `
 **Deploy:**
 ```bash
 npx supabase functions deploy criar-usuario
+```
+
+### `backup-banco`
+**Arquivo:** `supabase/functions/backup-banco/index.ts`  
+Exporta todas as tabelas do sistema como JSON e salva no bucket `backups` do Supabase Storage. Remove automaticamente backups com mais de **30 dias**.
+
+**Tabelas exportadas:** `parcerias`, `profissionais`, `lancamentos`, `parcelas`, `parcelas_log`, `user_profiles`, `configuracoes`
+
+**Arquivo gerado:** `backup_YYYY-MM-DDTHH-MM-SS.json` no bucket `backups` (privado)
+
+**Agendamento:** Diariamente às 03:00 BRT via pg_cron (migration 006)
+
+**Como acessar os backups:**  
+Supabase Dashboard → Storage → `backups`
+
+**Como testar manualmente:**  
+Supabase Dashboard → Edge Functions → `backup-banco` → Invoke
+
+**Deploy:**
+```bash
+npx supabase functions deploy backup-banco
 ```
