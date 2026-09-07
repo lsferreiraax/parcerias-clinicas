@@ -457,3 +457,13 @@ ALTER TABLE lancamentos
 ```
 
 **Valores possíveis:** `cartao_credito`, `pix`, `dinheiro`
+
+---
+
+## Dependências adicionadas — Relatórios PDF
+
+```bash
+npm install jspdf jspdf-autotable
+```
+
+Logo utilizado: `logotipo/logo-elleve.jpeg` (copiado para `public/logo.jpeg` para ser servido em runtime)

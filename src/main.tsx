@@ -16,6 +16,7 @@ import Resumo from '@/pages/Resumo'
 import Extrato from '@/pages/Extrato'
 import Usuarios from '@/pages/Usuarios'
 import Configuracoes from '@/pages/Configuracoes'
+import Relatorios from '@/pages/Relatorios'
 import './index.css'
 
 const qc = new QueryClient({
@@ -59,6 +60,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     <Route path="usuarios"    element={
                       <RoleGuard roles={['admin']} redirect="/">
                         <Usuarios />
+                      </RoleGuard>
+                    } />
+                    <Route path="relatorios" element={
+                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                        <Relatorios />
                       </RoleGuard>
                     } />
                     <Route path="configuracoes" element={
