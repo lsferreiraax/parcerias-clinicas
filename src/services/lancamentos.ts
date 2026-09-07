@@ -75,6 +75,44 @@ export async function atualizarStatusLancamento(id: string, status: string) {
   if (error) throw error
 }
 
+export interface EdicaoLancamento {
+  data_atendimento: string
+  paciente: string
+  parceria_id: ParceriaId
+  valor_total: number
+  observacoes?: string
+}
+
+export async function editarLancamento(id: string, dados: EdicaoLancamento) {
+  const rateio = calcularRateio(dados.parceria_id, dados.valor_total)
+
+  // 1. Atualiza o lançamento
+  const { error } = await supabase
+    .from('lancamentos')
+    .update({ ...dados, ...rateio })
+    .eq('id', id)
+  if (error) throw error
+
+  // 2. Recalcula rateio das parcelas pendentes
+  const { data: parcelas } = await supabase
+    .from('parcelas')
+    .select('id, valor_parcela')
+    .eq('lancamento_id', id)
+    .eq('status', 'pendente')
+
+  if (parcelas && parcelas.length > 0) {
+    await Promise.all(
+      parcelas.map(p => {
+        const rateioParc = calcularRateio(dados.parceria_id, Number(p.valor_parcela))
+        return supabase
+          .from('parcelas')
+          .update(rateioParc)
+          .eq('id', p.id)
+      })
+    )
+  }
+}
+
 export async function deletarLancamento(id: string) {
   const { error } = await supabase.from('lancamentos').delete().eq('id', id)
   if (error) throw error

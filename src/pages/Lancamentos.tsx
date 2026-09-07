@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Plus, Trash2, CheckCircle } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, Pencil } from 'lucide-react'
 import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/components/ui'
-import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento } from '@/hooks/useLancamentos'
+import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento, useEditarLancamento } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'
 import { calcularRateio, LABELS_PARCERIA } from '@/services/rateio'
 import { usePerfil } from '@/contexts/PerfilContext'
-import type { ParceriaId, FormaPagamento } from '@/types'
+import type { Lancamento, ParceriaId, FormaPagamento } from '@/types'
 
 const INIT = {
   data_atendimento: new Date().toISOString().split('T')[0],
@@ -17,22 +17,42 @@ const INIT = {
   observacoes: '',
 }
 
+type FormEdicao = {
+  data_atendimento: string
+  paciente: string
+  parceria_id: ParceriaId
+  valor_total: number
+  observacoes: string
+}
+
 export default function Lancamentos() {
-  const { isAdmin } = usePerfil()
-  const [modal, setModal]     = useState(false)
-  const [filtros, setFiltros] = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
-  const [form, setForm]       = useState(INIT)
+  const { isAdmin, isGestor } = usePerfil()
+  const podeEditar = isAdmin || isGestor
+
+  const [modal, setModal]         = useState(false)
+  const [modalEdicao, setModalEdicao] = useState(false)
+  const [lancamentoEditando, setLancamentoEditando] = useState<Lancamento | null>(null)
+  const [filtros, setFiltros]     = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
+  const [form, setForm]           = useState(INIT)
+  const [formEdicao, setFormEdicao] = useState<FormEdicao>({
+    data_atendimento: '',
+    paciente: '',
+    parceria_id: 'A',
+    valor_total: 0,
+    observacoes: '',
+  })
 
   const { data: lancamentos, isLoading } = useLancamentos(filtros)
   const criar     = useCriarLancamento()
   const atualizar = useAtualizarStatusLancamento()
   const deletar   = useDeletarLancamento()
+  const editar    = useEditarLancamento()
 
   const rateioPreview = form.valor_total > 0
     ? calcularRateio(form.parceria_id, form.valor_total)
     : null
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     if (!form.paciente || !form.valor_total) return
     await criar.mutateAsync({
       ...form,
@@ -41,6 +61,40 @@ export default function Lancamentos() {
     })
     setModal(false)
     setForm(INIT)
+  }
+
+  const abrirEdicao = (l: Lancamento) => {
+    setLancamentoEditando(l)
+    setFormEdicao({
+      data_atendimento: l.data_atendimento,
+      paciente:         l.paciente,
+      parceria_id:      l.parceria_id,
+      valor_total:      Number(l.valor_total),
+      observacoes:      l.observacoes ?? '',
+    })
+    setModalEdicao(true)
+  }
+
+  const handleSalvarEdicao = async () => {
+    if (!lancamentoEditando || !formEdicao.paciente || !formEdicao.valor_total) return
+    await editar.mutateAsync({ id: lancamentoEditando.id, dados: formEdicao })
+    setModalEdicao(false)
+    setLancamentoEditando(null)
+  }
+
+  const RateioPreview = ({ parceria_id, valor_total }: { parceria_id: ParceriaId; valor_total: number }) => {
+    const r = calcularRateio(parceria_id, valor_total)
+    return (
+      <div className="bg-gray-50 rounded-lg p-4 text-sm">
+        <p className="font-semibold text-gray-700 mb-2">Preview do Rateio</p>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {r.camta_valor  > 0 && <div className="flex justify-between"><span className="text-gray-500">Camta</span><span className="font-medium text-blue-700">{fmt.moeda(r.camta_valor)}</span></div>}
+          {r.medico_valor > 0 && <div className="flex justify-between"><span className="text-gray-500">Médico</span><span className="font-medium text-green-700">{fmt.moeda(r.medico_valor)}</span></div>}
+          <div className="flex justify-between"><span className="text-gray-500">Psi1</span><span className="font-medium text-yellow-700">{fmt.moeda(r.psi1_valor)}</span></div>
+          <div className="flex justify-between"><span className="text-gray-500">Psi2</span><span className="font-medium text-orange-700">{fmt.moeda(r.psi2_valor)}</span></div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -122,6 +176,13 @@ export default function Lancamentos() {
                           <CheckCircle size={15} />
                         </button>
                       )}
+                      {podeEditar && (
+                        <button
+                          onClick={() => abrirEdicao(l)}
+                          className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar lançamento">
+                          <Pencil size={15} />
+                        </button>
+                      )}
                       {isAdmin && (
                         <button
                           onClick={() => { if (window.confirm('Excluir lançamento?')) deletar.mutate(l.id) }}
@@ -138,6 +199,7 @@ export default function Lancamentos() {
         </div>
       </Card>
 
+      {/* Modal: Novo Lançamento */}
       <Modal open={modal} onClose={() => setModal(false)} title="Novo Lançamento">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -184,31 +246,7 @@ export default function Lancamentos() {
             onChange={e => setForm(f => ({ ...f, valor_total: Number(e.target.value) }))} />
 
           {rateioPreview && (
-            <div className="bg-gray-50 rounded-lg p-4 text-sm">
-              <p className="font-semibold text-gray-700 mb-2">Preview do Rateio</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {rateioPreview.camta_valor > 0  && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Camta</span>
-                    <span className="font-medium text-blue-700">{fmt.moeda(rateioPreview.camta_valor)}</span>
-                  </div>
-                )}
-                {rateioPreview.medico_valor > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Médico</span>
-                    <span className="font-medium text-green-700">{fmt.moeda(rateioPreview.medico_valor)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Psi1</span>
-                  <span className="font-medium text-yellow-700">{fmt.moeda(rateioPreview.psi1_valor)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Psi2</span>
-                  <span className="font-medium text-orange-700">{fmt.moeda(rateioPreview.psi2_valor)}</span>
-                </div>
-              </div>
-            </div>
+            <RateioPreview parceria_id={form.parceria_id} valor_total={form.valor_total} />
           )}
 
           <Input
@@ -219,6 +257,56 @@ export default function Lancamentos() {
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" className="flex-1" onClick={() => setModal(false)}>Cancelar</Button>
             <Button className="flex-1" loading={criar.isPending} onClick={handleSubmit}>Salvar Lançamento</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Editar Lançamento */}
+      <Modal open={modalEdicao} onClose={() => setModalEdicao(false)} title="Editar Lançamento">
+        <div className="space-y-4">
+          {lancamentoEditando?.forma_pagamento === 'parcelado' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+              Este lançamento é parcelado. Alterar a parceria recalculará o rateio das
+              <strong> parcelas pendentes</strong> automaticamente. Parcelas já pagas não são afetadas.
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Data do Atendimento" type="date"
+              value={formEdicao.data_atendimento}
+              onChange={e => setFormEdicao(f => ({ ...f, data_atendimento: e.target.value }))} />
+            <Select
+              label="Parceria" value={formEdicao.parceria_id}
+              onChange={e => setFormEdicao(f => ({ ...f, parceria_id: e.target.value as ParceriaId }))}>
+              {(['A','B','C'] as ParceriaId[]).map(p => (
+                <option key={p} value={p}>{LABELS_PARCERIA[p]}</option>
+              ))}
+            </Select>
+          </div>
+
+          <Input
+            label="Nome do Paciente" placeholder="Nome completo"
+            value={formEdicao.paciente}
+            onChange={e => setFormEdicao(f => ({ ...f, paciente: e.target.value }))} />
+
+          <Input
+            label="Valor Total (R$)" type="number" min={0} step={0.01}
+            value={formEdicao.valor_total || ''}
+            onChange={e => setFormEdicao(f => ({ ...f, valor_total: Number(e.target.value) }))} />
+
+          {formEdicao.valor_total > 0 && (
+            <RateioPreview parceria_id={formEdicao.parceria_id} valor_total={formEdicao.valor_total} />
+          )}
+
+          <Input
+            label="Observações (opcional)" placeholder="..."
+            value={formEdicao.observacoes}
+            onChange={e => setFormEdicao(f => ({ ...f, observacoes: e.target.value }))} />
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setModalEdicao(false)}>Cancelar</Button>
+            <Button className="flex-1" loading={editar.isPending} onClick={handleSalvarEdicao}>Salvar Alterações</Button>
           </div>
         </div>
       </Modal>
