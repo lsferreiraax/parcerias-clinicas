@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS configuracoes (
   updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE configuracoes ADD CONSTRAINT IF NOT EXISTS configuracoes_singleton CHECK (id = 1);
+ALTER TABLE configuracoes ADD CONSTRAINT configuracoes_singleton CHECK (id = 1);
 
 -- Trigger updated_at
 CREATE TRIGGER configuracoes_updated_at
