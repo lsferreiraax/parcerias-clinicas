@@ -85,11 +85,30 @@ npm install @react-pdf/renderer
 
 ---
 
+## Implementação Real
+
+> Adotada solução **jsPDF + jspdf-autotable** (client-side, sem bundle pesado) em vez de @react-pdf/renderer.
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/services/relatorio.ts` | Serviço com 3 funções de geração de PDF |
+| `src/pages/Relatorios.tsx` | Página `/relatorios` com filtros e botões de download |
+| `public/logo.jpeg` | Logo da clínica embutida nos cabeçalhos |
+
+**Padrão visual:**
+- Cabeçalho azul `#1F3864` com logo à esquerda e título centralizado
+- Rodapé cinza com mensagem de acesso restrito, usuário logado, data/hora e paginação
+
+---
+
 ## Status
 
-- [ ] Documentação criada
-- [ ] Instalar @react-pdf/renderer
-- [ ] Componente ExtratoIndividualPDF
-- [ ] Integrar na página Extrato
-- [ ] Componentes RateioMensal e Inadimplência
-- [ ] Testes e deploy
+- [x] Documentação criada
+- [x] Instalar jspdf + jspdf-autotable
+- [x] Relatório de Lançamentos (landscape A4, filtros por período e parceria)
+- [x] Relatório de Inadimplência (parcelas vencidas com dias em atraso)
+- [x] Relatório de Rateio Mensal (consolidado + detalhamento)
+- [x] Logo da clínica no cabeçalho de todos os PDFs
+- [x] Rodapé de acesso restrito em todas as páginas
+- [x] Página `/relatorios` na sidebar (admin e gestor)
+- [x] Deploy em produção

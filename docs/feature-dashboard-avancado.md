@@ -100,4 +100,4 @@ ORDER BY 1;
 - [x] Gráficos de barras empilhadas (receita 12 meses) e linhas (inadimplência)
 - [x] KPIs comparativos com variação % vs mês anterior
 - [x] Ranking de profissionais com seletor de mês
-- [ ] Testes e deploy
+- [x] Deploy em produção

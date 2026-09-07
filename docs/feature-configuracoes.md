@@ -107,7 +107,6 @@ CREATE POLICY "config_write_admin" ON configuracoes FOR UPDATE TO authenticated 
 - [x] Documentação criada
 - [x] Migration `005_configuracoes.sql`
 - [x] Página e componentes de configuração (DadosClinica, Parcerias, Profissionais)
-- [ ] Integrar logo nos PDFs (aguarda feature-relatorios-pdf)
-- [ ] Edge Function `notificar-vencidas` ler e-mails da tabela `configuracoes`
-- [ ] Rodar migration no Supabase (SQL Editor)
-- [ ] Testes e deploy
+- [x] Migration executada no Supabase
+- [x] Deploy em produção
+- [ ] Edge Function `notificar-vencidas` ler e-mails da tabela `configuracoes` (pendente)

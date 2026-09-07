@@ -17,20 +17,31 @@
 | Documento | Status |
 |-----------|--------|
 | [feature-perfis-acesso.md](feature-perfis-acesso.md) | ✅ Implementada — RBAC com 3 perfis (Admin, Gestor, Profissional), RLS no Supabase |
+| [feature-configuracoes.md](feature-configuracoes.md) | ✅ Implementada — Painel Admin com abas: Dados da Clínica, Parcerias, Profissionais, Notificações |
+| [feature-gestao-parcelas.md](feature-gestao-parcelas.md) | ✅ Implementada — Baixa em lote, histórico/audit log, renegociação, badge de alerta |
+| [feature-dashboard-avancado.md](feature-dashboard-avancado.md) | ✅ Implementada — Gráficos 12 meses, KPIs comparativos, ranking de profissionais |
+| [feature-relatorios-pdf.md](feature-relatorios-pdf.md) | ✅ Implementada — 3 relatórios PDF com logo, cabeçalho e rodapé de acesso restrito |
 
 ---
 
 ## Features Planejadas (Backlog)
 
-Ordenadas por impacto sugerido de implementação:
-
 | # | Documento | Descrição resumida | Complexidade |
 |---|-----------|-------------------|--------------|
-| 1 | [feature-configuracoes.md](feature-configuracoes.md) | Painel Admin para gerenciar parcerias, profissionais e dados da clínica sem tocar no banco | Média |
-| 2 | [feature-gestao-parcelas.md](feature-gestao-parcelas.md) | Baixa em lote, audit log de alterações, alertas in-app e renegociação de parcelas | Média |
-| 3 | [feature-dashboard-avancado.md](feature-dashboard-avancado.md) | Gráficos de receita mensal, inadimplência e ranking de profissionais com Recharts | Média |
-| 4 | [feature-relatorios-pdf.md](feature-relatorios-pdf.md) | Extrato individual e relatório de rateio em PDF com identidade visual da clínica | Média |
-| 5 | [feature-app-mobile.md](feature-app-mobile.md) | PWA instalável com suporte offline e notificações push no celular | Alta |
+| 1 | [feature-app-mobile.md](feature-app-mobile.md) | PWA instalável com suporte offline e notificações push no celular | Alta |
+
+---
+
+## Melhorias Incrementais (sem feature doc próprio)
+
+| Data | Descrição |
+|------|-----------|
+| 07/09/2026 | **Lançamentos — campos extras:** `nome_responsavel`, `data_pagamento` e tooltip com ícone (i) na tabela (migration 007) |
+| 07/09/2026 | **Lançamentos — meio de pagamento:** checkboxes multi-seleção (Cartão de Crédito, Pix, Dinheiro), coluna na tabela (migration 008) |
+| 07/09/2026 | **Login:** botão mostrar/ocultar senha |
+| 07/09/2026 | **Favicon:** logotipo da clínica (`public/logo.jpeg`) |
+| 07/09/2026 | **Edição de lançamentos:** recalcula rateio das parcelas pendentes ao editar parceria ou valor |
+| 07/09/2026 | **Backup automático:** Edge Function `backup-banco` + pg_cron diário às 03h BRT (migration 006) |
 
 ---
 
