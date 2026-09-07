@@ -16,6 +16,7 @@ export async function getResumoPorParceria(filtro?: FiltroResumo): Promise<Resum
   let q = supabase
     .from('lancamentos')
     .select('parceria_id, valor_total, camta_valor, medico_valor, psi1_valor, psi2_valor, parcerias(descricao)')
+    .neq('status', 'cancelado') // Bug 2: exclui cancelados
 
   if (filtro.dataInicio) q = q.gte('data_atendimento', filtro.dataInicio)
   if (filtro.dataFim)    q = q.lte('data_atendimento', filtro.dataFim)
@@ -59,6 +60,7 @@ export async function getResumoProfissional(filtro?: FiltroResumo): Promise<Resu
   let q = supabase
     .from('lancamentos')
     .select('camta_valor, medico_valor, psi1_valor, psi2_valor')
+    .neq('status', 'cancelado') // Bug 2: exclui cancelados
 
   if (filtro.dataInicio) q = q.gte('data_atendimento', filtro.dataInicio)
   if (filtro.dataFim)    q = q.lte('data_atendimento', filtro.dataFim)
@@ -79,7 +81,7 @@ export async function getResumoProfissional(filtro?: FiltroResumo): Promise<Resu
 
 export async function getKPIs() {
   const [lanc, parc] = await Promise.all([
-    supabase.from('lancamentos').select('valor_total, status'),
+    supabase.from('lancamentos').select('valor_total, status').neq('status', 'cancelado'), // Bug 3: exclui cancelados
     supabase.from('parcelas').select('valor_parcela, status, data_vencimento'),
   ])
 
@@ -89,9 +91,9 @@ export async function getKPIs() {
 
   return {
     totalAtendimentos: lancamentos.length,
-    receitaTotal: lancamentos.reduce((s, l) => s + Number(l.valor_total), 0),
-    receitaPaga:  lancamentos.filter(l => l.status === 'pago').reduce((s, l) => s + Number(l.valor_total), 0),
-    parcelasVencidas: parcelas.filter(p => p.status === 'pendente' && p.data_vencimento < hoje).length,
+    receitaTotal:      lancamentos.reduce((s, l) => s + Number(l.valor_total), 0),
+    receitaPaga:       lancamentos.filter(l => l.status === 'pago').reduce((s, l) => s + Number(l.valor_total), 0),
+    parcelasVencidas:  parcelas.filter(p => p.status === 'pendente' && p.data_vencimento < hoje).length,
     parcelasPendentes: parcelas.filter(p => p.status === 'pendente').length,
   }
 }

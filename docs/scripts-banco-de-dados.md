@@ -502,3 +502,38 @@ ALTER TABLE parcelas DROP CONSTRAINT IF EXISTS parcelas_lancamento_id_fkey;
 ALTER TABLE parcelas ADD CONSTRAINT parcelas_lancamento_id_fkey
   FOREIGN KEY (lancamento_id) REFERENCES lancamentos(id) ON DELETE CASCADE;
 ```
+
+---
+
+## 010 — Correção das views de resumo (bug de dupla contagem + cancelados)
+
+**Arquivo:** `supabase/migrations/010_fix_views_resumo.sql`  
+**Quando rodar:** Imediatamente — esta migration corrige valores incorretos em produção.
+
+### Problemas corrigidos
+
+**Bug 1 — Dupla contagem em lançamentos parcelados:**  
+As views originais faziam `JOIN lancamentos + parcelas` e somavam ambos. Como a tabela `lancamentos` já armazena o rateio do valor total, o JOIN com `parcelas` duplicava os valores em lançamentos parcelados. **Solução:** removido o JOIN com `parcelas` das views.
+
+**Bug 2 — Lançamentos cancelados incluídos nos totais:**  
+Nenhuma view filtrava `status != 'cancelado'`. **Solução:** adicionado `WHERE status != 'cancelado'` (ou `AND l.status != 'cancelado'` no JOIN).
+
+```sql
+CREATE OR REPLACE VIEW resumo_por_parceria AS
+SELECT p.id AS parceria, p.descricao,
+  COUNT(l.id) AS total_atendimentos,
+  COALESCE(SUM(l.valor_total),  0) AS valor_total,
+  COALESCE(SUM(l.camta_valor),  0) AS camta_total,
+  COALESCE(SUM(l.medico_valor), 0) AS medico_total,
+  COALESCE(SUM(l.psi1_valor),   0) AS psi1_total,
+  COALESCE(SUM(l.psi2_valor),   0) AS psi2_total
+FROM parcerias p
+LEFT JOIN lancamentos l ON l.parceria_id = p.id AND l.status != 'cancelado'
+GROUP BY p.id, p.descricao ORDER BY p.id;
+
+CREATE OR REPLACE VIEW resumo_profissional AS
+SELECT 'camta'  AS profissional, COALESCE(SUM(camta_valor),  0) AS total FROM lancamentos WHERE status != 'cancelado'
+UNION ALL SELECT 'medico', COALESCE(SUM(medico_valor), 0) FROM lancamentos WHERE status != 'cancelado'
+UNION ALL SELECT 'psi1',   COALESCE(SUM(psi1_valor),   0) FROM lancamentos WHERE status != 'cancelado'
+UNION ALL SELECT 'psi2',   COALESCE(SUM(psi2_valor),   0) FROM lancamentos WHERE status != 'cancelado';
+```
