@@ -73,6 +73,39 @@ export interface RateioResult {
   psi2_valor: number
 }
 
+export type TipoRepasse = 'camta' | 'medico' | 'psi1' | 'psi2'
+export type StatusRepasse = 'conciliado' | 'nao_conciliado'
+
+export interface Repasse {
+  id: string
+  lancamento_id: string
+  tipo: TipoRepasse
+  valor_original: number
+  valor_repasse: number
+  status: StatusRepasse
+  data_repasse?: string
+  observacoes?: string
+  created_at: string
+  updated_at: string
+  lancamentos?: {
+    data_atendimento: string
+    paciente: string
+    parceria_id: string
+    data_pagamento?: string
+  }
+}
+
+export interface RepasseLog {
+  id: string
+  repasse_id: string
+  campo: string
+  valor_anterior: string | null
+  valor_novo: string | null
+  motivo: string
+  alterado_por: string | null
+  alterado_em: string
+}
+
 export interface LancamentoLog {
   id: string
   lancamento_id: string

@@ -1,0 +1,134 @@
+import { supabase } from '@/lib/supabase'
+import type { Repasse, RepasseLog, TipoRepasse, StatusRepasse } from '@/types'
+
+export interface FiltroRepasse {
+  tipo?: TipoRepasse
+  status?: StatusRepasse
+  paciente?: string
+  dataInicio?: string
+  dataFim?: string
+  dataRepasseInicio?: string
+  dataRepasseFim?: string
+}
+
+export async function listarRepasses(filtro?: FiltroRepasse): Promise<Repasse[]> {
+  let q = supabase
+    .from('repasses')
+    .select('*, lancamentos(data_atendimento, paciente, parceria_id, data_pagamento)')
+    .order('created_at', { ascending: false })
+
+  if (filtro?.tipo)   q = q.eq('tipo', filtro.tipo)
+  if (filtro?.status) q = q.eq('status', filtro.status)
+  if (filtro?.dataInicio) q = q.gte('lancamentos.data_atendimento', filtro.dataInicio)
+  if (filtro?.dataFim)    q = q.lte('lancamentos.data_atendimento', filtro.dataFim)
+  if (filtro?.dataRepasseInicio) q = q.gte('data_repasse', filtro.dataRepasseInicio)
+  if (filtro?.dataRepasseFim)    q = q.lte('data_repasse', filtro.dataRepasseFim)
+
+  const { data, error } = await q
+  if (error) throw error
+
+  let result = (data ?? []) as Repasse[]
+
+  // Filtro de paciente no cliente (join field não filtrável via .eq no Supabase)
+  if (filtro?.paciente) {
+    const termo = filtro.paciente.toLowerCase()
+    result = result.filter(r =>
+      r.lancamentos?.paciente?.toLowerCase().includes(termo)
+    )
+  }
+
+  return result
+}
+
+export async function editarValorRepasse(
+  id: string,
+  novoValor: number,
+  motivo: string
+): Promise<void> {
+  const { data: atual, error: errBusca } = await supabase
+    .from('repasses').select('valor_repasse').eq('id', id).single()
+  if (errBusca) throw errBusca
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { error } = await supabase
+    .from('repasses').update({ valor_repasse: novoValor }).eq('id', id)
+  if (error) throw error
+
+  await supabase.from('repasses_log').insert({
+    repasse_id:     id,
+    campo:          'valor_repasse',
+    valor_anterior: String(atual.valor_repasse),
+    valor_novo:     String(novoValor),
+    motivo,
+    alterado_por:   user?.id ?? null,
+  })
+}
+
+export async function conciliarRepasse(id: string, dataRepasse: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { error } = await supabase
+    .from('repasses')
+    .update({ status: 'conciliado', data_repasse: dataRepasse })
+    .eq('id', id)
+  if (error) throw error
+
+  await supabase.from('repasses_log').insert({
+    repasse_id:     id,
+    campo:          'status',
+    valor_anterior: 'nao_conciliado',
+    valor_novo:     'conciliado',
+    motivo:         `Conciliado em ${dataRepasse}`,
+    alterado_por:   user?.id ?? null,
+  })
+}
+
+export async function desconciliarRepasse(id: string, motivo: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { error } = await supabase
+    .from('repasses')
+    .update({ status: 'nao_conciliado', data_repasse: null })
+    .eq('id', id)
+  if (error) throw error
+
+  await supabase.from('repasses_log').insert({
+    repasse_id:     id,
+    campo:          'status',
+    valor_anterior: 'conciliado',
+    valor_novo:     'nao_conciliado',
+    motivo,
+    alterado_por:   user?.id ?? null,
+  })
+}
+
+export async function conciliarEmLote(ids: string[], dataRepasse: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { error } = await supabase
+    .from('repasses')
+    .update({ status: 'conciliado', data_repasse: dataRepasse })
+    .in('id', ids)
+  if (error) throw error
+
+  const logs = ids.map(id => ({
+    repasse_id:     id,
+    campo:          'status',
+    valor_anterior: 'nao_conciliado',
+    valor_novo:     'conciliado',
+    motivo:         `Conciliação em lote — data: ${dataRepasse}`,
+    alterado_por:   user?.id ?? null,
+  }))
+  await supabase.from('repasses_log').insert(logs)
+}
+
+export async function buscarLogRepasse(repasseId: string): Promise<RepasseLog[]> {
+  const { data, error } = await supabase
+    .from('repasses_log')
+    .select('*')
+    .eq('repasse_id', repasseId)
+    .order('alterado_em', { ascending: false })
+  if (error) throw error
+  return data as RepasseLog[]
+}

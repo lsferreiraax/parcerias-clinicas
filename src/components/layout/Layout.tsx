@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom"
-import { LayoutDashboard, ClipboardList, CreditCard, BarChart3, FileText, Users, LogOut, Settings, FileDown } from "lucide-react"
+import { LayoutDashboard, ClipboardList, CreditCard, BarChart3, FileText, Users, LogOut, Settings, FileDown, ArrowLeftRight } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { usePerfil } from "@/contexts/PerfilContext"
 import { useParcelasAlerta } from "@/hooks/useResumo"
@@ -19,6 +19,7 @@ const nav: NavItem[] = [
   { to: '/parcelas',      label: 'Parcelas',      icon: CreditCard,      roles: ['admin', 'gestor'], badge: true },
   { to: '/resumo',        label: 'Resumo',        icon: BarChart3,       roles: ['admin', 'gestor'] },
   { to: '/extrato',       label: 'Extrato',       icon: FileText,        roles: ['admin', 'gestor', 'profissional'] },
+  { to: '/repasses',      label: 'Repasses',      icon: ArrowLeftRight,  roles: ['admin', 'gestor'] },
   { to: '/relatorios',    label: 'Relatórios',    icon: FileDown,        roles: ['admin', 'gestor'] },
   { to: '/usuarios',      label: 'Usuários',      icon: Users,           roles: ['admin'] },
   { to: '/configuracoes', label: 'Configurações', icon: Settings,        roles: ['admin'] },

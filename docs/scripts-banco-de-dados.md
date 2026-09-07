@@ -537,3 +537,32 @@ UNION ALL SELECT 'medico', COALESCE(SUM(medico_valor), 0) FROM lancamentos WHERE
 UNION ALL SELECT 'psi1',   COALESCE(SUM(psi1_valor),   0) FROM lancamentos WHERE status != 'cancelado'
 UNION ALL SELECT 'psi2',   COALESCE(SUM(psi2_valor),   0) FROM lancamentos WHERE status != 'cancelado';
 ```
+
+---
+
+## 011 — Feature: Repasses aos profissionais
+
+**Arquivo:** `supabase/migrations/011_repasses.sql`  
+**Quando rodar:** Antes do deploy da feature de repasses.
+
+### Tabela `repasses`
+Um registro por lançamento × profissional (onde o valor de rateio é > 0).
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `lancamento_id` | UUID | FK para lancamentos (CASCADE) |
+| `tipo` | TEXT | camta / medico / psi1 / psi2 |
+| `valor_original` | NUMERIC | Valor calculado no rateio |
+| `valor_repasse` | NUMERIC | Valor editável pelo gestor |
+| `status` | TEXT | conciliado / nao_conciliado |
+| `data_repasse` | DATE | Data em que o repasse foi efetuado |
+
+### Tabela `repasses_log`
+Histórico de todas as alterações (valor, status, data) com motivo e responsável.
+
+### Triggers
+- `repasses_apos_lancamento` — cria repasses automaticamente ao inserir lançamento
+- `repasses_apos_edicao_lancamento` — atualiza valor_original em repasses não conciliados ao editar lançamento
+
+### Retroativo
+A migration popula `repasses` com todos os lançamentos ativos existentes.
