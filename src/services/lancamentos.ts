@@ -7,6 +7,7 @@ export interface NovoLancamento {
   paciente: string
   nome_responsavel?: string
   data_pagamento?: string
+  meio_pagamento?: string[]
   parceria_id: ParceriaId
   forma_pagamento: FormaPagamento
   num_parcelas: number
@@ -82,6 +83,7 @@ export interface EdicaoLancamento {
   paciente: string
   nome_responsavel?: string
   data_pagamento?: string
+  meio_pagamento?: string[]
   parceria_id: ParceriaId
   valor_total: number
   observacoes?: string

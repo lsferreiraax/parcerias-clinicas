@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Trash2, CheckCircle, Pencil, Info } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode } from 'lucide-react'
 import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/components/ui'
 import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento, useEditarLancamento } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'
@@ -7,11 +7,77 @@ import { calcularRateio, LABELS_PARCERIA } from '@/services/rateio'
 import { usePerfil } from '@/contexts/PerfilContext'
 import type { Lancamento, ParceriaId, FormaPagamento } from '@/types'
 
+const MEIOS_PAGAMENTO = [
+  { value: 'cartao_credito', label: 'Cartão de Crédito', icon: CreditCard },
+  { value: 'pix',            label: 'Pix',               icon: QrCode     },
+  { value: 'dinheiro',       label: 'Dinheiro',           icon: Banknote   },
+] as const
+
+function MeioPagamentoCheckboxes({
+  value,
+  onChange,
+}: {
+  value: string[]
+  onChange: (v: string[]) => void
+}) {
+  const toggle = (meio: string) =>
+    onChange(value.includes(meio) ? value.filter(m => m !== meio) : [...value, meio])
+
+  return (
+    <div>
+      <p className="text-sm font-medium text-gray-700 mb-2">Meio de Pagamento</p>
+      <div className="flex gap-3 flex-wrap">
+        {MEIOS_PAGAMENTO.map(({ value: v, label, icon: Icon }) => {
+          const checked = value.includes(v)
+          return (
+            <label
+              key={v}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer select-none text-sm transition-colors ${
+                checked
+                  ? 'border-[#1F3864] bg-[#1F3864]/5 text-[#1F3864] font-medium'
+                  : 'border-gray-300 text-gray-600 hover:border-gray-400'
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={checked}
+                onChange={() => toggle(v)}
+              />
+              <Icon size={15} />
+              {label}
+            </label>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function MeioPagamentoBadges({ meios }: { meios?: string[] }) {
+  if (!meios || meios.length === 0) return <span className="text-gray-400">—</span>
+  return (
+    <div className="flex gap-1 flex-wrap">
+      {meios.map(m => {
+        const found = MEIOS_PAGAMENTO.find(x => x.value === m)
+        const Icon = found?.icon
+        return (
+          <span key={m} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs whitespace-nowrap">
+            {Icon && <Icon size={11} />}
+            {found?.label ?? m}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 const INIT = {
   data_atendimento: new Date().toISOString().split('T')[0],
   paciente: '',
   nome_responsavel: '',
   data_pagamento: '',
+  meio_pagamento: [] as string[],
   parceria_id: 'A' as ParceriaId,
   forma_pagamento: 'avista' as FormaPagamento,
   num_parcelas: 1,
@@ -24,6 +90,7 @@ type FormEdicao = {
   paciente: string
   nome_responsavel: string
   data_pagamento: string
+  meio_pagamento: string[]
   parceria_id: ParceriaId
   valor_total: number
   observacoes: string
@@ -77,6 +144,7 @@ export default function Lancamentos() {
     paciente: '',
     nome_responsavel: '',
     data_pagamento: '',
+    meio_pagamento: [],
     parceria_id: 'A',
     valor_total: 0,
     observacoes: '',
@@ -98,6 +166,7 @@ export default function Lancamentos() {
       ...form,
       nome_responsavel: form.nome_responsavel || undefined,
       data_pagamento:   form.data_pagamento   || undefined,
+      meio_pagamento:   form.meio_pagamento.length > 0 ? form.meio_pagamento : undefined,
       valor_total:  Number(form.valor_total),
       num_parcelas: Number(form.num_parcelas),
     })
@@ -112,6 +181,7 @@ export default function Lancamentos() {
       paciente:         l.paciente,
       nome_responsavel: l.nome_responsavel ?? '',
       data_pagamento:   l.data_pagamento   ?? '',
+      meio_pagamento:   l.meio_pagamento   ?? [],
       parceria_id:      l.parceria_id,
       valor_total:      Number(l.valor_total),
       observacoes:      l.observacoes ?? '',
@@ -127,6 +197,7 @@ export default function Lancamentos() {
         ...formEdicao,
         nome_responsavel: formEdicao.nome_responsavel || undefined,
         data_pagamento:   formEdicao.data_pagamento   || undefined,
+        meio_pagamento:   formEdicao.meio_pagamento.length > 0 ? formEdicao.meio_pagamento : undefined,
       },
     })
     setModalEdicao(false)
@@ -190,17 +261,17 @@ export default function Lancamentos() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
-                {['Data','Paciente','Parceria','Pagamento','Valor Total','Camta','Médico','Psi1','Psi2','Dt. Pagamento','Status','Ações'].map(h => (
+                {['Data','Paciente','Parceria','Pagamento','Meio','Valor Total','Camta','Médico','Psi1','Psi2','Dt. Pagamento','Status','Ações'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading && (
-                <tr><td colSpan={12} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
+                <tr><td colSpan={13} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
               )}
               {!isLoading && (!lancamentos || lancamentos.length === 0) && (
-                <tr><td colSpan={12} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
+                <tr><td colSpan={13} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
               )}
               {(lancamentos ?? []).map(l => (
                 <tr key={l.id} className="hover:bg-gray-50">
@@ -213,6 +284,7 @@ export default function Lancamentos() {
                   </td>
                   <td className="px-4 py-3"><Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge></td>
                   <td className="px-4 py-3">{l.forma_pagamento === 'avista' ? 'À Vista' : `Parcelado ${l.num_parcelas}x`}</td>
+                  <td className="px-4 py-3"><MeioPagamentoBadges meios={l.meio_pagamento} /></td>
                   <td className="px-4 py-3 font-semibold">{fmt.moeda(l.valor_total)}</td>
                   <td className="px-4 py-3 text-blue-700">{l.camta_valor > 0 ? fmt.moeda(l.camta_valor) : '—'}</td>
                   <td className="px-4 py-3 text-green-700">{l.medico_valor > 0 ? fmt.moeda(l.medico_valor) : '—'}</td>
@@ -316,6 +388,11 @@ export default function Lancamentos() {
               onChange={e => setForm(f => ({ ...f, data_pagamento: e.target.value }))} />
           </div>
 
+          <MeioPagamentoCheckboxes
+            value={form.meio_pagamento}
+            onChange={v => setForm(f => ({ ...f, meio_pagamento: v }))}
+          />
+
           {rateioPreview && (
             <RateioPreview parceria_id={form.parceria_id} valor_total={form.valor_total} />
           )}
@@ -377,6 +454,11 @@ export default function Lancamentos() {
               value={formEdicao.data_pagamento}
               onChange={e => setFormEdicao(f => ({ ...f, data_pagamento: e.target.value }))} />
           </div>
+
+          <MeioPagamentoCheckboxes
+            value={formEdicao.meio_pagamento}
+            onChange={v => setFormEdicao(f => ({ ...f, meio_pagamento: v }))}
+          />
 
           {formEdicao.valor_total > 0 && (
             <RateioPreview parceria_id={formEdicao.parceria_id} valor_total={formEdicao.valor_total} />

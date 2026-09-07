@@ -441,3 +441,19 @@ ALTER TABLE lancamentos
   ADD COLUMN IF NOT EXISTS nome_responsavel TEXT,
   ADD COLUMN IF NOT EXISTS data_pagamento   DATE;
 ```
+
+---
+
+## 008 — Campo meio_pagamento em lancamentos
+
+**Arquivo:** `supabase/migrations/008_lancamentos_meio_pagamento.sql`  
+**Quando rodar:** Após deploy da versão que inclui o campo na UI.
+
+Adiciona o campo `meio_pagamento TEXT[]` à tabela `lancamentos`, permitindo registrar múltiplos meios de pagamento (Cartão de Crédito, Pix, Dinheiro) por atendimento.
+
+```sql
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS meio_pagamento TEXT[] DEFAULT ARRAY[]::TEXT[];
+```
+
+**Valores possíveis:** `cartao_credito`, `pix`, `dinheiro`
