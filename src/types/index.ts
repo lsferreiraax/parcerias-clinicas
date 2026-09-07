@@ -16,6 +16,8 @@ export interface Lancamento {
   id: string
   data_atendimento: string
   paciente: string
+  nome_responsavel?: string
+  data_pagamento?: string
   parceria_id: ParceriaId
   forma_pagamento: FormaPagamento
   num_parcelas: number

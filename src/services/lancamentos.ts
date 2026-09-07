@@ -5,6 +5,8 @@ import type { Lancamento, ParceriaId, FormaPagamento } from '@/types'
 export interface NovoLancamento {
   data_atendimento: string
   paciente: string
+  nome_responsavel?: string
+  data_pagamento?: string
   parceria_id: ParceriaId
   forma_pagamento: FormaPagamento
   num_parcelas: number
@@ -78,6 +80,8 @@ export async function atualizarStatusLancamento(id: string, status: string) {
 export interface EdicaoLancamento {
   data_atendimento: string
   paciente: string
+  nome_responsavel?: string
+  data_pagamento?: string
   parceria_id: ParceriaId
   valor_total: number
   observacoes?: string

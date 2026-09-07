@@ -423,3 +423,21 @@ Supabase Dashboard → Edge Functions → `backup-banco` → Invoke
 ```bash
 npx supabase functions deploy backup-banco
 ```
+
+
+---
+
+## 007 — Campos nome_responsavel e data_pagamento em lancamentos
+
+**Arquivo:** `supabase/migrations/007_lancamentos_campos.sql`  
+**Quando rodar:** Após deploy da versão que inclui esses campos na UI.
+
+Adiciona dois campos opcionais à tabela `lancamentos`:
+- `nome_responsavel TEXT` — nome do responsável pelo paciente
+- `data_pagamento DATE` — data em que a sessão foi efetivamente paga
+
+```sql
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS nome_responsavel TEXT,
+  ADD COLUMN IF NOT EXISTS data_pagamento   DATE;
+```

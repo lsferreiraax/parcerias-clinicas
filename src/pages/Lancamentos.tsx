@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Trash2, CheckCircle, Pencil } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Plus, Trash2, CheckCircle, Pencil, Info } from 'lucide-react'
 import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/components/ui'
 import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento, useEditarLancamento } from '@/hooks/useLancamentos'
 import { fmt } from '@/lib/utils'
@@ -10,6 +10,8 @@ import type { Lancamento, ParceriaId, FormaPagamento } from '@/types'
 const INIT = {
   data_atendimento: new Date().toISOString().split('T')[0],
   paciente: '',
+  nome_responsavel: '',
+  data_pagamento: '',
   parceria_id: 'A' as ParceriaId,
   forma_pagamento: 'avista' as FormaPagamento,
   num_parcelas: 1,
@@ -20,9 +22,45 @@ const INIT = {
 type FormEdicao = {
   data_atendimento: string
   paciente: string
+  nome_responsavel: string
+  data_pagamento: string
   parceria_id: ParceriaId
   valor_total: number
   observacoes: string
+}
+
+function TooltipResponsavel({ nome }: { nome: string }) {
+  const [visible, setVisible] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!visible) return
+    const handler = () => setVisible(false)
+    document.addEventListener('scroll', handler, true)
+    return () => document.removeEventListener('scroll', handler, true)
+  }, [visible])
+
+  return (
+    <div className="relative inline-flex" ref={ref}>
+      <button
+        type="button"
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+        onFocus={() => setVisible(true)}
+        onBlur={() => setVisible(false)}
+        className="text-gray-400 hover:text-gray-600 focus:outline-none"
+        aria-label="Ver responsável"
+      >
+        <Info size={14} />
+      </button>
+      {visible && (
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-lg bg-gray-800 px-3 py-1.5 text-xs text-white shadow-lg">
+          <span className="font-medium">Responsável:</span> {nome || '—'}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Lancamentos() {
@@ -37,6 +75,8 @@ export default function Lancamentos() {
   const [formEdicao, setFormEdicao] = useState<FormEdicao>({
     data_atendimento: '',
     paciente: '',
+    nome_responsavel: '',
+    data_pagamento: '',
     parceria_id: 'A',
     valor_total: 0,
     observacoes: '',
@@ -52,10 +92,12 @@ export default function Lancamentos() {
     ? calcularRateio(form.parceria_id, form.valor_total)
     : null
 
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
     if (!form.paciente || !form.valor_total) return
     await criar.mutateAsync({
       ...form,
+      nome_responsavel: form.nome_responsavel || undefined,
+      data_pagamento:   form.data_pagamento   || undefined,
       valor_total:  Number(form.valor_total),
       num_parcelas: Number(form.num_parcelas),
     })
@@ -68,6 +110,8 @@ const handleSubmit = async () => {
     setFormEdicao({
       data_atendimento: l.data_atendimento,
       paciente:         l.paciente,
+      nome_responsavel: l.nome_responsavel ?? '',
+      data_pagamento:   l.data_pagamento   ?? '',
       parceria_id:      l.parceria_id,
       valor_total:      Number(l.valor_total),
       observacoes:      l.observacoes ?? '',
@@ -77,7 +121,14 @@ const handleSubmit = async () => {
 
   const handleSalvarEdicao = async () => {
     if (!lancamentoEditando || !formEdicao.paciente || !formEdicao.valor_total) return
-    await editar.mutateAsync({ id: lancamentoEditando.id, dados: formEdicao })
+    await editar.mutateAsync({
+      id: lancamentoEditando.id,
+      dados: {
+        ...formEdicao,
+        nome_responsavel: formEdicao.nome_responsavel || undefined,
+        data_pagamento:   formEdicao.data_pagamento   || undefined,
+      },
+    })
     setModalEdicao(false)
     setLancamentoEditando(null)
   }
@@ -139,22 +190,27 @@ const handleSubmit = async () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
-                {['Data','Paciente','Parceria','Pagamento','Valor Total','Camta','Médico','Psi1','Psi2','Status','Ações'].map(h => (
+                {['Data','Paciente','Parceria','Pagamento','Valor Total','Camta','Médico','Psi1','Psi2','Dt. Pagamento','Status','Ações'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading && (
-                <tr><td colSpan={11} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
+                <tr><td colSpan={12} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
               )}
               {!isLoading && (!lancamentos || lancamentos.length === 0) && (
-                <tr><td colSpan={11} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
+                <tr><td colSpan={12} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
               )}
               {(lancamentos ?? []).map(l => (
                 <tr key={l.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 whitespace-nowrap">{fmt.data(l.data_atendimento)}</td>
-                  <td className="px-4 py-3 font-medium">{l.paciente}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <div className="flex items-center gap-1.5">
+                      {l.paciente}
+                      {l.nome_responsavel && <TooltipResponsavel nome={l.nome_responsavel} />}
+                    </div>
+                  </td>
                   <td className="px-4 py-3"><Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge></td>
                   <td className="px-4 py-3">{l.forma_pagamento === 'avista' ? 'À Vista' : `Parcelado ${l.num_parcelas}x`}</td>
                   <td className="px-4 py-3 font-semibold">{fmt.moeda(l.valor_total)}</td>
@@ -162,6 +218,9 @@ const handleSubmit = async () => {
                   <td className="px-4 py-3 text-green-700">{l.medico_valor > 0 ? fmt.moeda(l.medico_valor) : '—'}</td>
                   <td className="px-4 py-3 text-yellow-700">{fmt.moeda(l.psi1_valor)}</td>
                   <td className="px-4 py-3 text-orange-700">{fmt.moeda(l.psi2_valor)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-gray-500">
+                    {l.data_pagamento ? fmt.data(l.data_pagamento) : '—'}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant={l.status === 'pago' ? 'success' : l.status === 'cancelado' ? 'danger' : 'warning'}>
                       {l.status}
@@ -216,10 +275,16 @@ const handleSubmit = async () => {
             </Select>
           </div>
 
-          <Input
-            label="Nome do Paciente" placeholder="Nome completo"
-            value={form.paciente}
-            onChange={e => setForm(f => ({ ...f, paciente: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Nome do Paciente" placeholder="Nome completo"
+              value={form.paciente}
+              onChange={e => setForm(f => ({ ...f, paciente: e.target.value }))} />
+            <Input
+              label="Nome do Responsável (opcional)" placeholder="Responsável pelo paciente"
+              value={form.nome_responsavel}
+              onChange={e => setForm(f => ({ ...f, nome_responsavel: e.target.value }))} />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Select
@@ -240,10 +305,16 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          <Input
-            label="Valor Total (R$)" type="number" min={0} step={0.01} placeholder="0,00"
-            value={form.valor_total || ''}
-            onChange={e => setForm(f => ({ ...f, valor_total: Number(e.target.value) }))} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Valor Total (R$)" type="number" min={0} step={0.01} placeholder="0,00"
+              value={form.valor_total || ''}
+              onChange={e => setForm(f => ({ ...f, valor_total: Number(e.target.value) }))} />
+            <Input
+              label="Data do Pagamento (opcional)" type="date"
+              value={form.data_pagamento}
+              onChange={e => setForm(f => ({ ...f, data_pagamento: e.target.value }))} />
+          </div>
 
           {rateioPreview && (
             <RateioPreview parceria_id={form.parceria_id} valor_total={form.valor_total} />
@@ -285,15 +356,27 @@ const handleSubmit = async () => {
             </Select>
           </div>
 
-          <Input
-            label="Nome do Paciente" placeholder="Nome completo"
-            value={formEdicao.paciente}
-            onChange={e => setFormEdicao(f => ({ ...f, paciente: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Nome do Paciente" placeholder="Nome completo"
+              value={formEdicao.paciente}
+              onChange={e => setFormEdicao(f => ({ ...f, paciente: e.target.value }))} />
+            <Input
+              label="Nome do Responsável (opcional)" placeholder="Responsável pelo paciente"
+              value={formEdicao.nome_responsavel}
+              onChange={e => setFormEdicao(f => ({ ...f, nome_responsavel: e.target.value }))} />
+          </div>
 
-          <Input
-            label="Valor Total (R$)" type="number" min={0} step={0.01}
-            value={formEdicao.valor_total || ''}
-            onChange={e => setFormEdicao(f => ({ ...f, valor_total: Number(e.target.value) }))} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Valor Total (R$)" type="number" min={0} step={0.01}
+              value={formEdicao.valor_total || ''}
+              onChange={e => setFormEdicao(f => ({ ...f, valor_total: Number(e.target.value) }))} />
+            <Input
+              label="Data do Pagamento (opcional)" type="date"
+              value={formEdicao.data_pagamento}
+              onChange={e => setFormEdicao(f => ({ ...f, data_pagamento: e.target.value }))} />
+          </div>
 
           {formEdicao.valor_total > 0 && (
             <RateioPreview parceria_id={formEdicao.parceria_id} valor_total={formEdicao.valor_total} />
