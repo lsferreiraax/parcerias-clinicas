@@ -18,6 +18,24 @@ export function calcularRateio(config: ParceriaConfig, valor: number): RateioRes
   }
 }
 
+export interface ValidacaoRateio {
+  ok: boolean
+  soma: number
+  diferenca: number
+}
+
+export function validarRateio(config: ParceriaConfig): ValidacaoRateio {
+  const soma = config.camta_pct + config.medico_pct + config.psi1_pct + config.psi2_pct
+  const diferenca = Math.abs(soma - 1)
+  return { ok: diferenca <= 0.001, soma, diferenca }
+}
+
+export function validarResultadoRateio(resultado: RateioResult, valorTotal: number): { ok: boolean; diferenca: number } {
+  const soma = resultado.camta_valor + resultado.medico_valor + resultado.psi1_valor + resultado.psi2_valor
+  const diferenca = Math.abs(soma - valorTotal)
+  return { ok: diferenca <= 0.02, diferenca }
+}
+
 export const CORES_PARCERIA: Record<ParceriaId, string> = {
   A: 'bg-blue-100 text-blue-800',
   B: 'bg-green-100 text-green-800',

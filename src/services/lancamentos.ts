@@ -63,6 +63,43 @@ export async function criarLancamento(dados: NovoLancamento) {
   return data
 }
 
+export interface DuplicataInfo {
+  id: string
+  data_atendimento: string
+  paciente: string
+  valor_total: number
+  status: string
+}
+
+export async function verificarDuplicata(
+  paciente: string,
+  dataAtendimento: string,
+  parceriaId: ParceriaId
+): Promise<DuplicataInfo | null> {
+  if (!paciente.trim() || !dataAtendimento || !parceriaId) return null
+
+  // Janela de ±1 dia ao redor da data informada
+  const d    = new Date(dataAtendimento)
+  const ant  = new Date(d); ant.setDate(ant.getDate() - 1)
+  const dep  = new Date(d); dep.setDate(dep.getDate() + 1)
+  const ini  = ant.toISOString().split('T')[0]
+  const fim  = dep.toISOString().split('T')[0]
+
+  const { data, error } = await supabase
+    .from('lancamentos')
+    .select('id, data_atendimento, paciente, valor_total, status')
+    .eq('paciente', paciente.trim())
+    .eq('parceria_id', parceriaId)
+    .neq('status', 'cancelado')
+    .gte('data_atendimento', ini)
+    .lte('data_atendimento', fim)
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) return null
+  return data as DuplicataInfo
+}
+
 export async function listarLancamentos(filtros?: {
   parceria?: string
   status?: string

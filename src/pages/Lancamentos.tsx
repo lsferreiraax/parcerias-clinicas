@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode, AlertTriangle, XCircle, History } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode, AlertTriangle, XCircle, History, AlertCircle } from 'lucide-react'
 import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/components/ui'
 import {
   useLancamentos, useCriarLancamento, useAtualizarStatusLancamento,
   useDeletarLancamento, useEditarLancamento, useDeletarEmLote,
-  useCancelarLancamento, useLogEdicaoLancamento,
+  useCancelarLancamento, useLogEdicaoLancamento, useVerificarDuplicata,
 } from '@/hooks/useLancamentos'
 import { useParcerias } from '@/hooks/useConfiguracoes'
 import { fmt } from '@/lib/utils'
-import { calcularRateio } from '@/services/rateio'
+import { calcularRateio, validarResultadoRateio } from '@/services/rateio'
 import { usePerfil } from '@/contexts/PerfilContext'
 import type { Lancamento, ParceriaId, FormaPagamento } from '@/types'
 import type { ParceriaConfig } from '@/services/rateio'
@@ -204,6 +204,8 @@ export default function Lancamentos() {
   })
 
   const { data: lancamentos, isLoading } = useLancamentos(filtros)
+  const { data: duplicata } = useVerificarDuplicata(form.paciente, form.data_atendimento, form.parceria_id)
+
   const criar          = useCriarLancamento()
   const atualizar      = useAtualizarStatusLancamento()
   const cancelar       = useCancelarLancamento()
@@ -606,7 +608,40 @@ export default function Lancamentos() {
             onChange={v => setForm(f => ({ ...f, meio_pagamento: v }))}
           />
 
-          <RateioPreview config={getParceriaConfig(form.parceria_id)} valor_total={form.valor_total} />
+          {/* Alerta de duplicata */}
+          {duplicata && (
+            <div className="flex items-start gap-3 bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3 text-sm text-yellow-800">
+              <AlertCircle size={16} className="shrink-0 mt-0.5 text-yellow-600" />
+              <div>
+                <p className="font-semibold">Possível lançamento duplicado</p>
+                <p className="mt-0.5">
+                  Já existe um lançamento para <strong>{duplicata.paciente}</strong> em{' '}
+                  <strong>{fmt.data(duplicata.data_atendimento)}</strong> na mesma parceria —
+                  valor {fmt.moeda(duplicata.valor_total)}, status <em>{duplicata.status}</em>.
+                  Verifique antes de salvar.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Preview do rateio com validação de consistência */}
+          {(() => {
+            const config = getParceriaConfig(form.parceria_id)
+            if (!config || form.valor_total <= 0) return null
+            const resultado = calcularRateio(config, form.valor_total)
+            const validacao = validarResultadoRateio(resultado, form.valor_total)
+            return (
+              <>
+                <RateioPreview config={config} valor_total={form.valor_total} />
+                {!validacao.ok && (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+                    <AlertTriangle size={13} className="shrink-0" />
+                    <span>Rateio inconsistente: soma difere do valor total em <strong>{fmt.moeda(validacao.diferenca)}</strong>. Verifique os percentuais em Configurações.</span>
+                  </div>
+                )}
+              </>
+            )
+          })()}
 
           <Input
             label="Observações (opcional)" placeholder="..."

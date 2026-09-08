@@ -1,16 +1,33 @@
 import { useState } from 'react'
-import { Pencil, Plus, Check, X } from 'lucide-react'
+import { Pencil, Plus, Check, X, AlertTriangle } from 'lucide-react'
 import { useParcerias, useSalvarParceria, useCriarParceria } from '@/hooks/useConfiguracoes'
+import { validarRateio } from '@/services/rateio'
 import type { ParceriaCompleta } from '@/types'
 
 type Editando = Partial<ParceriaCompleta> & { id: string }
 
+function somaPct(p: Partial<ParceriaCompleta>) {
+  return (p.camta_pct ?? 0) + (p.medico_pct ?? 0) + (p.psi1_pct ?? 0) + (p.psi2_pct ?? 0)
+}
+
 function validar(p: Partial<ParceriaCompleta>) {
-  const soma = (p.camta_pct ?? 0) + (p.medico_pct ?? 0) + (p.psi1_pct ?? 0) + (p.psi2_pct ?? 0)
+  const soma = somaPct(p)
   if (soma > 100) return 'A soma dos percentuais não pode ultrapassar 100%'
   if ([p.camta_pct, p.medico_pct, p.psi1_pct, p.psi2_pct].some(v => (v ?? 0) < 0))
     return 'Percentuais não podem ser negativos'
   return null
+}
+
+function BadgeSoma({ p }: { p: ParceriaCompleta }) {
+  const cfg = { camta_pct: p.camta_pct / 100, medico_pct: p.medico_pct / 100, psi1_pct: p.psi1_pct / 100, psi2_pct: p.psi2_pct / 100 }
+  const { ok, soma } = validarRateio(cfg)
+  const somaDisplay = (soma * 100).toFixed(2)
+  if (ok) return <span className="text-xs text-green-600 font-medium">✓ {somaDisplay}%</span>
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium" title="Os percentuais não somam 100%. Novos lançamentos podem ter rateio inconsistente.">
+      <AlertTriangle size={12} /> {somaDisplay}%
+    </span>
+  )
 }
 
 export default function GerenciarParcerias() {
@@ -76,7 +93,7 @@ export default function GerenciarParcerias() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
             <tr>
-              {['ID','Descrição','Camta%','Médico%','Psi1%','Psi2%','Status',''].map(h => (
+              {['ID','Descrição','Camta%','Médico%','Psi1%','Psi2%','Soma','Status',''].map(h => (
                 <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
               ))}
             </tr>
@@ -99,6 +116,17 @@ export default function GerenciarParcerias() {
                           className="w-20 border rounded px-2 py-1 text-sm" />
                       </td>
                     ))}
+                    <td className="px-4 py-2 text-xs text-gray-500">
+                      {(() => {
+                        const s = somaPct(editando)
+                        const ok = Math.abs(s - 100) <= 0.1
+                        return (
+                          <span className={ok ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                            {s.toFixed(2)}%{!ok && ' ⚠'}
+                          </span>
+                        )
+                      })()}
+                    </td>
                     <td className="px-4 py-2">
                       <select value={editando.ativo ? 'true' : 'false'}
                         onChange={e => setEditando({ ...editando, ativo: e.target.value === 'true' })}
@@ -122,6 +150,7 @@ export default function GerenciarParcerias() {
                     <td className="px-4 py-3">{p.medico_pct}%</td>
                     <td className="px-4 py-3">{p.psi1_pct}%</td>
                     <td className="px-4 py-3">{p.psi2_pct}%</td>
+                    <td className="px-4 py-3"><BadgeSoma p={p} /></td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {p.ativo ? 'Ativo' : 'Inativo'}

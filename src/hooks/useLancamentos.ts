@@ -2,9 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   criarLancamento, listarLancamentos, atualizarStatusLancamento,
   cancelarLancamento, deletarLancamento, editarLancamento,
-  deletarEmLote, buscarLogEdicaoLancamento,
+  deletarEmLote, buscarLogEdicaoLancamento, verificarDuplicata,
 } from '@/services/lancamentos'
 import type { NovoLancamento, EdicaoLancamento } from '@/services/lancamentos'
+import type { ParceriaId } from '@/types'
 
 export function useLancamentos(filtros?: Parameters<typeof listarLancamentos>[0]) {
   return useQuery({
@@ -74,6 +75,20 @@ export function useEditarLancamento() {
       qc.invalidateQueries({ queryKey: ['kpi-comparativo'] })
       qc.invalidateQueries({ queryKey: ['receita-mensal'] })
     },
+  })
+}
+
+export function useVerificarDuplicata(
+  paciente: string,
+  dataAtendimento: string,
+  parceriaId: ParceriaId
+) {
+  const ativo = paciente.trim().length >= 3 && !!dataAtendimento && !!parceriaId
+  return useQuery({
+    queryKey: ['duplicata', paciente.trim(), dataAtendimento, parceriaId],
+    queryFn: () => verificarDuplicata(paciente.trim(), dataAtendimento, parceriaId),
+    enabled: ativo,
+    staleTime: 10_000,
   })
 }
 
