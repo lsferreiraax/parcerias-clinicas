@@ -340,7 +340,161 @@ export async function gerarRelatorioRepasse(
   doc.save(`repasse_${tipo}_${new Date().toISOString().slice(0,10)}.pdf`)
 }
 
-// ─── 5. Relatório de Repasse (Excel) ─────────────────────────────────────────
+// ─── 5. Relatório Mensal de Repasses (PDF) ───────────────────────────────────
+
+const TIPO_PROFISSIONAL: Record<string, string> = {
+  camta: 'Camta',
+  medico: 'Médico',
+  psi1: 'Psi 1',
+  psi2: 'Psi 2',
+}
+
+export async function gerarRelatorioMensalRepasses(
+  repasses: any[],
+  mes: string,
+  usuarioNome: string
+) {
+  const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const logo   = await logoBase64()
+  let   startY = cabecalho(doc, logo, 'Repasses Mensais por Profissional', `Competência: ${mes}`)
+
+  // Agrupar por tipo (profissional)
+  const tipos = ['camta', 'medico', 'psi1', 'psi2']
+  const grupos: Record<string, any[]> = {}
+  for (const r of repasses) {
+    grupos[r.tipo] = grupos[r.tipo] ?? []
+    grupos[r.tipo].push(r)
+  }
+
+  // Resumo consolidado
+  const resumoRows = tipos
+    .filter(t => grupos[t]?.length)
+    .map(t => {
+      const lista = grupos[t]
+      const totalOrig    = lista.reduce((s: number, r: any) => s + Number(r.valor_original), 0)
+      const totalRepasse = lista.reduce((s: number, r: any) => s + Number(r.valor_repasse),  0)
+      const conciliados  = lista.filter((r: any) => r.status === 'conciliado').length
+      return [
+        TIPO_PROFISSIONAL[t] ?? t,
+        lista.length,
+        conciliados,
+        lista.length - conciliados,
+        fmt.moeda(totalOrig),
+        fmt.moeda(totalRepasse),
+      ]
+    })
+
+  const totOriginal = repasses.reduce((s, r) => s + Number(r.valor_original), 0)
+  const totRepasse  = repasses.reduce((s, r) => s + Number(r.valor_repasse),  0)
+  const totConc     = repasses.filter(r => r.status === 'conciliado').length
+
+  autoTable(doc, {
+    startY,
+    head: [['Profissional', 'Repasses', 'Conciliados', 'Pendentes', 'Valor Original', 'Valor Repasse']],
+    body: resumoRows,
+    foot: [['TOTAL', repasses.length, totConc, repasses.length - totConc, fmt.moeda(totOriginal), fmt.moeda(totRepasse)]],
+    headStyles: { fillColor: COR_PRIMARIA   as [number,number,number], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+    footStyles: { fillColor: COR_SECUNDARIA as [number,number,number], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: [245, 247, 252] },
+    margin: { bottom: 20 },
+  })
+
+  // Detalhamento por profissional
+  for (const tipo of tipos) {
+    const lista = grupos[tipo]
+    if (!lista?.length) continue
+
+    const detalheY = (doc as any).lastAutoTable.finalY + 8
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...COR_PRIMARIA as [number,number,number])
+    doc.text(TIPO_PROFISSIONAL[tipo] ?? tipo, 14, detalheY)
+    doc.setTextColor(0, 0, 0)
+
+    autoTable(doc, {
+      startY: detalheY + 4,
+      head: [['Dt. Atendimento', 'Paciente', 'Parceria', 'Valor Original', 'Valor Repasse', 'Situação']],
+      body: lista.map((r: any) => [
+        r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—',
+        r.lancamentos?.paciente ?? '—',
+        r.lancamentos?.parceria_id ? `Parceria ${r.lancamentos.parceria_id}` : '—',
+        fmt.moeda(Number(r.valor_original)),
+        fmt.moeda(Number(r.valor_repasse)),
+        r.status === 'conciliado' ? 'Conciliado' : 'Pendente',
+      ]),
+      foot: [['', '', 'SUBTOTAL',
+        fmt.moeda(lista.reduce((s: number, r: any) => s + Number(r.valor_original), 0)),
+        fmt.moeda(lista.reduce((s: number, r: any) => s + Number(r.valor_repasse),  0)),
+        `${lista.length} repasses`,
+      ]],
+      headStyles:   { fillColor: [70, 90, 120], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+      footStyles:   { fillColor: [100, 120, 150], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+      bodyStyles:   { fontSize: 7.5 },
+      alternateRowStyles: { fillColor: [248, 249, 252] },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 5) {
+          const val = data.cell.raw as string
+          data.cell.styles.textColor = val === 'Conciliado' ? [0, 120, 0] : [180, 80, 0]
+          data.cell.styles.fontStyle = 'bold'
+        }
+      },
+      margin: { bottom: 20 },
+    })
+  }
+
+  rodape(doc, usuarioNome)
+  doc.save(`repasses_mensais_${mes.replace(/\s/g, '_')}.pdf`)
+}
+
+// ─── 6. Relatório Mensal de Repasses (Excel) ─────────────────────────────────
+
+export function exportarRepassesMensalExcel(repasses: any[], mes: string) {
+  const wb = XLSX.utils.book_new()
+  const tipos = ['camta', 'medico', 'psi1', 'psi2']
+  const grupos: Record<string, any[]> = {}
+  for (const r of repasses) {
+    grupos[r.tipo] = grupos[r.tipo] ?? []
+    grupos[r.tipo].push(r)
+  }
+
+  // Aba de resumo
+  const resumoLinhas = tipos.filter(t => grupos[t]?.length).map(t => {
+    const lista = grupos[t]
+    return {
+      'Profissional':    TIPO_PROFISSIONAL[t] ?? t,
+      'Qtd. Repasses':  lista.length,
+      'Conciliados':    lista.filter((r: any) => r.status === 'conciliado').length,
+      'Pendentes':      lista.filter((r: any) => r.status === 'nao_conciliado').length,
+      'Valor Original': repasses.reduce((s: number, r: any) => t === r.tipo ? s + Number(r.valor_original) : s, 0),
+      'Valor Repasse':  repasses.reduce((s: number, r: any) => t === r.tipo ? s + Number(r.valor_repasse)  : s, 0),
+    }
+  })
+  const wsResumo = XLSX.utils.json_to_sheet(resumoLinhas)
+  wsResumo['!cols'] = [16, 14, 12, 12, 18, 16].map(wch => ({ wch }))
+  XLSX.utils.book_append_sheet(wb, wsResumo, `Resumo ${mes}`)
+
+  // Uma aba por profissional
+  for (const tipo of tipos) {
+    const lista = grupos[tipo]
+    if (!lista?.length) continue
+    const linhas = lista.map((r: any) => ({
+      'Dt. Atendimento': r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—',
+      'Paciente':        r.lancamentos?.paciente ?? '—',
+      'Parceria':        r.lancamentos?.parceria_id ? `Parceria ${r.lancamentos.parceria_id}` : '—',
+      'Valor Original':  Number(r.valor_original),
+      'Valor Repasse':   Number(r.valor_repasse),
+      'Situação':        r.status === 'conciliado' ? 'Conciliado' : 'Pendente',
+    }))
+    const ws = XLSX.utils.json_to_sheet(linhas)
+    ws['!cols'] = [14, 28, 12, 16, 16, 12].map(wch => ({ wch }))
+    XLSX.utils.book_append_sheet(wb, ws, TIPO_PROFISSIONAL[tipo] ?? tipo)
+  }
+
+  XLSX.writeFile(wb, `repasses_mensais_${mes.replace(/\s/g, '_')}.xlsx`)
+}
+
+// ─── 8. Relatório de Repasse individual (PDF) ───────────────────────────────
 
 export function exportarRepasseExcel(repasses: Repasse[], tipo: TipoRepasse) {
   const wb = XLSX.utils.book_new()

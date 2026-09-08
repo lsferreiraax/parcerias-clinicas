@@ -252,6 +252,57 @@ CREATE TABLE IF NOT EXISTS lancamentos_edicoes_log (
 
 ---
 
+## 013 — Repasse vinculado à baixa da parcela
+
+**Arquivo:** `supabase/migrations/013_repasse_por_baixa_parcela.sql`
+
+**O que muda:**
+- Remove trigger `repasses_apos_lancamento` (criava repasses no INSERT do lançamento pelo valor total)
+- Cria trigger `repasse_apos_baixa_parcela` em `parcelas` (AFTER UPDATE) — dispara quando `status` muda para `'pago'`
+
+**Lógica do novo trigger (`criar_repasse_por_parcela`):**
+- Calcula a proporção da parcela: `valor_parcela / valor_total`
+- Cria ou acumula o repasse por tipo (camta, medico, psi1, psi2) usando `INSERT ON CONFLICT DO UPDATE`
+- Acumula apenas em repasses ainda `nao_conciliado`
+
+```sql
+DROP TRIGGER IF EXISTS repasses_apos_lancamento ON lancamentos;
+
+CREATE OR REPLACE FUNCTION criar_repasse_por_parcela()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_lanc      RECORD;
+  v_proporcao NUMERIC;
+  v_camta NUMERIC; v_medico NUMERIC; v_psi1 NUMERIC; v_psi2 NUMERIC;
+BEGIN
+  IF NEW.status IS DISTINCT FROM 'pago' OR OLD.status = 'pago' THEN RETURN NEW; END IF;
+  SELECT * INTO v_lanc FROM lancamentos WHERE id = NEW.lancamento_id;
+  IF v_lanc IS NULL OR v_lanc.valor_total = 0 OR v_lanc.status = 'cancelado' THEN RETURN NEW; END IF;
+  v_proporcao := ROUND(NEW.valor_parcela::NUMERIC / v_lanc.valor_total::NUMERIC, 6);
+  -- cria/acumula repasses proporcionais para cada tipo ativo
+  -- ... (ver arquivo completo)
+  RETURN NEW;
+END; $$;
+
+CREATE TRIGGER repasse_apos_baixa_parcela
+  AFTER UPDATE ON parcelas
+  FOR EACH ROW EXECUTE FUNCTION criar_repasse_por_parcela();
+```
+
+**Impacto em dados existentes:** nenhum. Lançamentos/repasses já criados permanecem inalterados. A nova lógica só afeta eventos de baixa futuros.
+
+**Verificar triggers após aplicar:**
+```sql
+SELECT tgname, tgrelid::regclass, tgenabled
+FROM pg_trigger
+WHERE tgrelid IN ('lancamentos'::regclass, 'parcelas'::regclass);
+```
+
+> **Execute esta migration no SQL Editor do Supabase antes do próximo deploy.**
+
+---
+
 ## Diagnóstico útil
 
 ```sql

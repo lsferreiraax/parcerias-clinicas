@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileDown, FileText, AlertTriangle, TrendingUp } from 'lucide-react'
+import { FileDown, FileText, AlertTriangle, TrendingUp, ArrowLeftRight } from 'lucide-react'
 import { Card, Button, FiltroData } from '@/components/ui'
 import { useLancamentos } from '@/hooks/useLancamentos'
 import { useQuery } from '@tanstack/react-query'
@@ -9,6 +9,8 @@ import {
   gerarRelatorioLancamentos,
   gerarRelatorioInadimplencia,
   gerarRelatorioRateio,
+  gerarRelatorioMensalRepasses,
+  exportarRepassesMensalExcel,
 } from '@/services/relatorio'
 import type { ParceriaId } from '@/types'
 
@@ -43,12 +45,53 @@ export default function Relatorios() {
   const mesAtual = new Date().toISOString().slice(0, 7)
   const [mesRateio, setMesRateio] = useState(mesAtual)
 
-  const [gerandoLanc, setGerandoLanc] = useState(false)
-  const [gerandoInad, setGerandoInad] = useState(false)
-  const [gerandoRateio, setGerandoRateio] = useState(false)
+  // Filtros — Repasses Mensais
+  const mesAtualRepasses = new Date().toISOString().slice(0, 7)
+  const [mesRepasses, setMesRepasses] = useState(mesAtualRepasses)
+
+  const [gerandoLanc, setGerandoLanc]       = useState(false)
+  const [gerandoInad, setGerandoInad]       = useState(false)
+  const [gerandoRateio, setGerandoRateio]   = useState(false)
+  const [gerandoRep, setGerandoRep]         = useState(false)
+  const [exportandoRep, setExportandoRep]   = useState(false)
 
   const { data: lancamentos    } = useLancamentos(filtrosLanc)
   const { data: parcelasVencidas } = useParcelas('vencido')
+
+  const { data: repassesMes } = useQuery({
+    queryKey: ['repasses-mes-relatorio', mesRepasses],
+    queryFn: async () => {
+      const inicio = `${mesRepasses}-01`
+      const fim    = new Date(Number(mesRepasses.slice(0,4)), Number(mesRepasses.slice(5,7)), 0)
+        .toISOString().split('T')[0]
+      const { data, error } = await supabase
+        .from('repasses')
+        .select('*, lancamentos(data_atendimento, paciente, parceria_id, data_pagamento)')
+        .gte('created_at', inicio)
+        .lte('created_at', fim + 'T23:59:59')
+        .order('tipo')
+      if (error) throw error
+      return data ?? []
+    },
+  })
+
+  const mesRepassesLabel = mesRepasses
+    ? new Date(mesRepasses + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    : ''
+
+  const handleRepassesPDF = async () => {
+    if (!repassesMes?.length) return
+    setGerandoRep(true)
+    try { await gerarRelatorioMensalRepasses(repassesMes, mesRepassesLabel, usuarioNome) }
+    finally { setGerandoRep(false) }
+  }
+
+  const handleRepassesExcel = async () => {
+    if (!repassesMes?.length) return
+    setExportandoRep(true)
+    try { exportarRepassesMensalExcel(repassesMes, mesRepassesLabel) }
+    finally { setExportandoRep(false) }
+  }
 
   const mesLabel = mesRateio
     ? new Date(mesRateio + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -203,6 +246,48 @@ export default function Relatorios() {
             </Button>
             <p className="text-sm text-gray-500">
               {lancamentosMes.length} lançamento(s) em {mesLabel}
+            </p>
+          </div>
+        </div>
+      </Card>
+      {/* Relatório Mensal de Repasses */}
+      <Card>
+        <div className="px-6 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-700">
+              <ArrowLeftRight size={20} />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-800">Relatório Mensal de Repasses</h2>
+              <p className="text-sm text-gray-500">Consolidado por profissional com detalhamento de repasses do mês</p>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="flex items-end gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Competência</label>
+              <input
+                type="month"
+                value={mesRepasses}
+                onChange={e => setMesRepasses(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={handleRepassesPDF} loading={gerandoRep} disabled={!repassesMes?.length}
+              className="bg-indigo-700 hover:bg-indigo-800">
+              <FileDown size={16} />
+              {gerandoRep ? 'Gerando...' : 'Gerar PDF'}
+            </Button>
+            <Button onClick={handleRepassesExcel} loading={exportandoRep} disabled={!repassesMes?.length}
+              className="bg-emerald-700 hover:bg-emerald-800">
+              <FileDown size={16} />
+              {exportandoRep ? 'Exportando...' : 'Exportar Excel'}
+            </Button>
+            <p className="text-sm text-gray-500">
+              {repassesMes?.length ?? 0} repasse(s) em {mesRepassesLabel}
             </p>
           </div>
         </div>

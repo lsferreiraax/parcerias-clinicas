@@ -102,19 +102,19 @@ Mostrar contagem de repasses não conciliados há mais de N dias no menu lateral
 > Features novas que agregam valor mas exigem mais esforço de implementação.
 
 ### 3.1 Dashboard de inadimplência
-**Status:** 📋 Planejado  
+**Status:** ✅ Implementado (2026-09-07)  
 **Relevância:** ⭐⭐⭐ | **Tokens est.:** ~12k  
-Painel com pacientes inadimplentes, valor em aberto e dias de atraso.
+Página `/inadimplencia` com pacientes inadimplentes agrupados, valor em aberto, dias de atraso, exportação PDF.
 
 ### 3.2 Relatório mensal consolidado de repasses
-**Status:** 📋 Planejado  
+**Status:** ✅ Implementado (2026-09-07)  
 **Relevância:** ⭐⭐ | **Tokens est.:** ~10k  
-PDF/Excel com todos os repasses do mês agrupados por profissional.
+PDF/Excel com todos os repasses do mês agrupados por profissional. Disponível na tela de Relatórios.
 
 ### 3.3 Repasse vinculado à baixa da parcela
-**Status:** 📋 Planejado  
+**Status:** ✅ Implementado (2026-09-07)  
 **Relevância:** ⭐⭐⭐⭐ | **Tokens est.:** ~18k  
-**Atenção — maior refatoração:** muda a lógica do trigger de criação de repasses. Atualmente o repasse é criado no INSERT do lançamento; o correto seria criar na baixa da parcela (quando o pagamento é confirmado).
+Migration 013: remove trigger de INSERT em lancamentos, cria trigger em parcelas (AFTER UPDATE status → 'pago'). Cria/acumula repasses proporcionalmente por parcela paga.
 
 ---
 
@@ -129,3 +129,6 @@ PDF/Excel com todos os repasses do mês agrupados por profissional.
 | 2026-09-07 | Filtro por paciente em Parcelas  | 2     |
 | 2026-09-07 | Badge de repasses pendentes      | 2     |
 | 2026-09-07 | Extrato com filtro de período    | 2     |
+| 2026-09-07 | Dashboard de inadimplência       | 3     |
+| 2026-09-07 | Relatório mensal de repasses     | 3     |
+| 2026-09-07 | Repasse vinculado à baixa        | 3     |
