@@ -303,6 +303,53 @@ WHERE tgrelid IN ('lancamentos'::regclass, 'parcelas'::regclass);
 
 ---
 
+## 014 — Correção de rateios (bug percentuais inteiros)
+
+**Arquivo:** `supabase/migrations/014_corrigir_rateio_percentuais.sql`
+
+**Problema corrigido:** O sistema armazenava percentuais como inteiros (ex: 40 = 40%), mas `calcularRateio` multiplicava sem dividir por 100, gerando valores 100× maiores. Adicionalmente, a Parceria C foi editada via UI com valores fracionários (0.4 e 0.6) ao invés de inteiros (40 e 60).
+
+**O que o script faz:**
+1. Corrige Parceria C: `psi1_pct = 40`, `psi2_pct = 60` (proteção: só aplica se `psi1_pct < 1`)
+2. Recalcula todos os lançamentos não cancelados: `valor = valor_total * pct / 100`
+3. Recalcula repasses `nao_conciliado` proporcionalmente ao valor da parcela
+
+```sql
+-- Passo 1: Corrigir Parceria C
+UPDATE parcerias SET psi1_pct = 40, psi2_pct = 60 WHERE id = 'C' AND psi1_pct < 1;
+
+-- Passo 2: Recalcular rateio dos lançamentos
+UPDATE lancamentos l
+SET
+  camta_valor  = ROUND((l.valor_total * p.camta_pct  / 100.0)::numeric, 2),
+  medico_valor = ROUND((l.valor_total * p.medico_pct / 100.0)::numeric, 2),
+  psi1_valor   = ROUND((l.valor_total * p.psi1_pct   / 100.0)::numeric, 2),
+  psi2_valor   = ROUND((l.valor_total * p.psi2_pct   / 100.0)::numeric, 2)
+FROM parcerias p
+WHERE l.parceria_id = p.id AND l.status != 'cancelado';
+
+-- Passo 3: Recalcular repasses nao_conciliado
+UPDATE repasses r
+SET valor_repasse = ROUND(
+  (SELECT
+    CASE r.tipo_profissional
+      WHEN 'camta'  THEN p.camta_pct
+      WHEN 'medico' THEN p.medico_pct
+      WHEN 'psi1'   THEN p.psi1_pct
+      WHEN 'psi2'   THEN p.psi2_pct
+      ELSE 0
+    END * parc.valor_parcela / 100.0
+  FROM parcelas parc
+  JOIN lancamentos l ON l.id = parc.lancamento_id
+  JOIN parcerias p   ON p.id = l.parceria_id
+  WHERE parc.id = r.parcela_id)::numeric, 2)
+WHERE r.status = 'nao_conciliado';
+```
+
+> **Execute esta migration no SQL Editor do Supabase ANTES do próximo deploy. O código frontend (`rateio.ts`) já foi corrigido para dividir por 100.**
+
+---
+
 ## Diagnóstico útil
 
 ```sql

@@ -19,12 +19,11 @@ function validar(p: Partial<ParceriaCompleta>) {
 }
 
 function BadgeSoma({ p }: { p: ParceriaCompleta }) {
-  const cfg = { camta_pct: p.camta_pct / 100, medico_pct: p.medico_pct / 100, psi1_pct: p.psi1_pct / 100, psi2_pct: p.psi2_pct / 100 }
-  const { ok, soma } = validarRateio(cfg)
-  const somaDisplay = (soma * 100).toFixed(2)
+  const { ok, soma } = validarRateio({ camta_pct: p.camta_pct, medico_pct: p.medico_pct, psi1_pct: p.psi1_pct, psi2_pct: p.psi2_pct })
+  const somaDisplay = soma.toFixed(2)
   if (ok) return <span className="text-xs text-green-600 font-medium">✓ {somaDisplay}%</span>
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium" title="Os percentuais não somam 100%. Novos lançamentos podem ter rateio inconsistente.">
+    <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium" title="Os percentuais não somam 100%. Novos lançamentos terão rateio incorreto.">
       <AlertTriangle size={12} /> {somaDisplay}%
     </span>
   )
