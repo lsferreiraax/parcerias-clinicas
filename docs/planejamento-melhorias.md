@@ -190,7 +190,7 @@ Admin e gestor precisam entrar no sistema para ver o consolidado do mês. Um e-m
 > Previne erros silenciosos antes que entrem no banco.
 
 ### 5.1 Validação de duplicata ao cadastrar lançamento
-**Status:** 📋 Planejado  
+**Status:** ✅ Implementado (2026-09-08)  
 **Relevância:** ⭐⭐⭐⭐⭐ | **Tokens est.:** ~6k
 
 **Problema:**
@@ -209,7 +209,7 @@ Admin e gestor precisam entrar no sistema para ver o consolidado do mês. Um e-m
 ---
 
 ### 5.2 Conferência de integridade do rateio
-**Status:** 📋 Planejado  
+**Status:** ✅ Implementado (2026-09-08)  
 **Relevância:** ⭐⭐⭐⭐ | **Tokens est.:** ~4k
 
 **Problema:**
@@ -325,15 +325,18 @@ Não há um painel centralizado mostrando todas as parcelas renegociadas. A info
 
 ## Histórico de conclusão
 
-| Data       | Feature                          | Bloco |
-|------------|----------------------------------|-------|
-| 2026-09-07 | Documentação do planejamento     | —     |
-| 2026-09-07 | Rateio dinâmico do banco         | 1     |
-| 2026-09-07 | Log de edições de lançamentos    | 1     |
-| 2026-09-07 | Cancelamento com motivo e log    | 1     |
-| 2026-09-07 | Filtro por paciente em Parcelas  | 2     |
-| 2026-09-07 | Badge de repasses pendentes      | 2     |
-| 2026-09-07 | Extrato com filtro de período    | 2     |
-| 2026-09-07 | Dashboard de inadimplência       | 3     |
-| 2026-09-07 | Relatório mensal de repasses     | 3     |
-| 2026-09-07 | Repasse vinculado à baixa        | 3     |
+| Data       | Feature                                        | Bloco |
+|------------|------------------------------------------------|-------|
+| 2026-09-07 | Documentação do planejamento                   | —     |
+| 2026-09-07 | Rateio dinâmico do banco                       | 1     |
+| 2026-09-07 | Log de edições de lançamentos                  | 1     |
+| 2026-09-07 | Cancelamento com motivo e log                  | 1     |
+| 2026-09-07 | Filtro por paciente em Parcelas                | 2     |
+| 2026-09-07 | Badge de repasses pendentes                    | 2     |
+| 2026-09-07 | Extrato com filtro de período                  | 2     |
+| 2026-09-07 | Dashboard de inadimplência                     | 3     |
+| 2026-09-07 | Relatório mensal de repasses                   | 3     |
+| 2026-09-07 | Repasse vinculado à baixa                      | 3     |
+| 2026-09-08 | Detecção de duplicata (US-19)                  | 5     |
+| 2026-09-08 | Validação de integridade do rateio (US-20)     | 5     |
+| 2026-09-08 | Bug fix: percentuais de rateio ÷ 100 (014)    | —     |

@@ -328,22 +328,41 @@ SET
 FROM parcerias p
 WHERE l.parceria_id = p.id AND l.status != 'cancelado';
 
--- Passo 3: Recalcular repasses nao_conciliado
+-- Passo 3: Recalcular repasses nao_conciliado (vinculados ao lançamento)
 UPDATE repasses r
-SET valor_repasse = ROUND(
-  (SELECT
-    CASE r.tipo_profissional
-      WHEN 'camta'  THEN p.camta_pct
-      WHEN 'medico' THEN p.medico_pct
-      WHEN 'psi1'   THEN p.psi1_pct
-      WHEN 'psi2'   THEN p.psi2_pct
+SET
+  valor_original = ROUND(
+    CASE r.tipo
+      WHEN 'camta'  THEN l.valor_total * p.camta_pct  / 100.0
+      WHEN 'medico' THEN l.valor_total * p.medico_pct / 100.0
+      WHEN 'psi1'   THEN l.valor_total * p.psi1_pct   / 100.0
+      WHEN 'psi2'   THEN l.valor_total * p.psi2_pct   / 100.0
       ELSE 0
-    END * parc.valor_parcela / 100.0
-  FROM parcelas parc
-  JOIN lancamentos l ON l.id = parc.lancamento_id
-  JOIN parcerias p   ON p.id = l.parceria_id
-  WHERE parc.id = r.parcela_id)::numeric, 2)
-WHERE r.status = 'nao_conciliado';
+    END::numeric, 2),
+  valor_repasse = ROUND(
+    CASE r.tipo
+      WHEN 'camta'  THEN l.valor_total * p.camta_pct  / 100.0
+      WHEN 'medico' THEN l.valor_total * p.medico_pct / 100.0
+      WHEN 'psi1'   THEN l.valor_total * p.psi1_pct   / 100.0
+      WHEN 'psi2'   THEN l.valor_total * p.psi2_pct   / 100.0
+      ELSE 0
+    END::numeric, 2)
+FROM lancamentos l
+JOIN parcerias p ON p.id = l.parceria_id
+WHERE r.lancamento_id = l.id
+  AND r.status = 'nao_conciliado';
+
+-- Passo 4: Recalcular rateio das PARCELAS (proporcional ao valor_parcela)
+UPDATE parcelas pa
+SET
+  camta_valor  = ROUND((pa.valor_parcela * p.camta_pct  / 100.0)::numeric, 2),
+  medico_valor = ROUND((pa.valor_parcela * p.medico_pct / 100.0)::numeric, 2),
+  psi1_valor   = ROUND((pa.valor_parcela * p.psi1_pct   / 100.0)::numeric, 2),
+  psi2_valor   = ROUND((pa.valor_parcela * p.psi2_pct   / 100.0)::numeric, 2)
+FROM lancamentos l
+JOIN parcerias p ON p.id = l.parceria_id
+WHERE pa.lancamento_id = l.id
+  AND pa.status != 'cancelado';
 ```
 
 > **Execute esta migration no SQL Editor do Supabase ANTES do próximo deploy. O código frontend (`rateio.ts`) já foi corrigido para dividir por 100.**

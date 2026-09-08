@@ -32,7 +32,7 @@
 
 ---
 
-## Melhorias Incrementais (sem feature doc próprio)
+## Melhorias e Correções (sem feature doc próprio)
 
 | Data | Descrição |
 |------|-----------|
@@ -42,6 +42,12 @@
 | 07/09/2026 | **Favicon:** logotipo da clínica (`public/logo.jpeg`) |
 | 07/09/2026 | **Edição de lançamentos:** recalcula rateio das parcelas pendentes ao editar parceria ou valor |
 | 07/09/2026 | **Backup automático:** Edge Function `backup-banco` + pg_cron diário às 03h BRT (migration 006) |
+| 07/09/2026 | **Dashboard de inadimplência:** página `/inadimplencia` com KPIs, agrupamento por paciente e exportação PDF |
+| 07/09/2026 | **Relatório mensal de repasses:** PDF e Excel por profissional na tela de Relatórios |
+| 07/09/2026 | **Repasse por baixa de parcela:** migration 013 — repasses gerados proporcionalmente ao pagar cada parcela |
+| 08/09/2026 | **Detecção de duplicata (US-19):** alerta amarelo ao cadastrar lançamento similar ao existente |
+| 08/09/2026 | **Validação de rateio (US-20):** badge de inconsistência quando rateio não fecha com valor total |
+| 08/09/2026 | **Bug fix — rateio 100× (migration 014):** corrigido cálculo que multiplicava percentual inteiro sem ÷ 100; dados de lancamentos, parcelas e repasses recalculados |
 
 ---
 

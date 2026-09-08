@@ -273,9 +273,10 @@ ocorrer somente após a confirmação do recebimento (baixa da parcela).
 
 ---
 
-## Funcionalidades Planejadas — Bloco 5 (Qualidade de Dados)
+## Funcionalidades Implementadas — Bloco 5 (Qualidade de Dados)
 
 ### US-19 — Detectar Lançamento Duplicado
+**Status:** ✅ Implementado (2026-09-08)
 **Como** gestor,  
 **quero** ser alertado quando estou cadastrando um atendimento possivelmente duplicado,  
 **para que** eu não lance duas vezes o mesmo atendimento por erro.
@@ -290,6 +291,8 @@ ocorrer somente após a confirmação do recebimento (baixa da parcela).
 ---
 
 ### US-20 — Validar Integridade do Rateio
+**Status:** ✅ Implementado (2026-09-08)
+
 **Como** gestor,  
 **quero** ser avisado quando o rateio calculado não fecha com o valor total do atendimento,  
 **para que** eu corrija o percentual antes que o erro entre no banco.
