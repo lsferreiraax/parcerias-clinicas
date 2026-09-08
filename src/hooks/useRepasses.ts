@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   listarRepasses, editarValorRepasse, conciliarRepasse,
   desconciliarRepasse, conciliarEmLote, buscarLogRepasse,
+  contarRepassesPendentes,
 } from '@/services/repasses'
 import type { FiltroRepasse } from '@/services/repasses'
 
@@ -45,6 +46,14 @@ export function useConciliarEmLote() {
     mutationFn: ({ ids, dataRepasse }: { ids: string[]; dataRepasse: string }) =>
       conciliarEmLote(ids, dataRepasse),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['repasses'] }),
+  })
+}
+
+export function useRepassesPendentesAlerta() {
+  return useQuery({
+    queryKey: ['repasses-alerta'],
+    queryFn: contarRepassesPendentes,
+    refetchInterval: 5 * 60_000,
   })
 }
 

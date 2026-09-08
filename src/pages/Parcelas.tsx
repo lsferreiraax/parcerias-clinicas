@@ -13,9 +13,10 @@ export default function Parcelas() {
   const { isAdmin, isGestor } = usePerfil()
   const podeGerenciar = isAdmin || isGestor
 
-  const [filtroStatus, setFiltroStatus] = useState('')
-  const [dataInicio, setDataInicio]     = useState('')
-  const [dataFim, setDataFim]           = useState('')
+  const [filtroStatus, setFiltroStatus]   = useState('')
+  const [filtroPaciente, setFiltroPaciente] = useState('')
+  const [dataInicio, setDataInicio]       = useState('')
+  const [dataFim, setDataFim]             = useState('')
 
   // Seleção em lote
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
@@ -28,9 +29,10 @@ export default function Parcelas() {
   } | null>(null)
 
   const filtros = {
-    ...(filtroStatus ? { status: filtroStatus } : {}),
-    ...(dataInicio   ? { dataInicio }           : {}),
-    ...(dataFim      ? { dataFim }              : {}),
+    ...(filtroStatus   ? { status: filtroStatus }     : {}),
+    ...(filtroPaciente ? { paciente: filtroPaciente } : {}),
+    ...(dataInicio     ? { dataInicio }               : {}),
+    ...(dataFim        ? { dataFim }                  : {}),
   }
   const { data: parcelas, isLoading } = useParcelas(Object.keys(filtros).length ? filtros : undefined)
   const marcarPaga  = useMarcarParcelaPaga()
@@ -111,6 +113,14 @@ export default function Parcelas() {
 
       <Card>
         <div className="px-6 py-4 flex gap-3 flex-wrap items-center">
+          <input
+            type="text"
+            placeholder="Buscar paciente..."
+            value={filtroPaciente}
+            onChange={e => setFiltroPaciente(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-48"
+          />
+          <div className="h-5 border-l border-gray-200" />
           {[
             { val: '',            label: 'Todas' },
             { val: 'pendente',    label: 'Pendente' },

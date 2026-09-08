@@ -81,17 +81,17 @@ O cancelamento de lançamentos não exige motivo e não registra log. A exclusã
 > Pequenas melhorias de alto retorno e baixo custo de implementação.
 
 ### 2.1 Filtro por paciente em Parcelas
-**Status:** 📋 Planejado  
+**Status:** ✅ Implementado (2026-09-07)  
 **Relevância:** ⭐⭐⭐ | **Tokens est.:** ~2k  
 Adicionar campo de busca por nome do paciente na tela de Parcelas.
 
 ### 2.2 Extrato com filtro de período
-**Status:** 📋 Planejado  
+**Status:** ✅ Já estava implementado (identificado na revisão do Bloco 2)  
 **Relevância:** ⭐⭐⭐ | **Tokens est.:** ~3k  
 Adicionar `FiltroData` na tela de Extrato para o profissional filtrar por período.
 
 ### 2.3 Badge de repasses pendentes no menu
-**Status:** 📋 Planejado  
+**Status:** ✅ Implementado (2026-09-07)  
 **Relevância:** ⭐⭐⭐ | **Tokens est.:** ~2k  
 Mostrar contagem de repasses não conciliados há mais de N dias no menu lateral.
 
@@ -126,3 +126,6 @@ PDF/Excel com todos os repasses do mês agrupados por profissional.
 | 2026-09-07 | Rateio dinâmico do banco         | 1     |
 | 2026-09-07 | Log de edições de lançamentos    | 1     |
 | 2026-09-07 | Cancelamento com motivo e log    | 1     |
+| 2026-09-07 | Filtro por paciente em Parcelas  | 2     |
+| 2026-09-07 | Badge de repasses pendentes      | 2     |
+| 2026-09-07 | Extrato com filtro de período    | 2     |

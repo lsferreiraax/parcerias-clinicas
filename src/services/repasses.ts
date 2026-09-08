@@ -128,6 +128,15 @@ export async function conciliarEmLote(ids: string[], dataRepasse: string): Promi
   await supabase.from('repasses_log').insert(logs)
 }
 
+export async function contarRepassesPendentes(): Promise<number> {
+  const { count, error } = await supabase
+    .from('repasses')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'nao_conciliado')
+  if (error) throw error
+  return count ?? 0
+}
+
 export async function buscarLogRepasse(repasseId: string): Promise<RepasseLog[]> {
   const { data, error } = await supabase
     .from('repasses_log')

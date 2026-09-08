@@ -6,6 +6,7 @@ export async function listarParcelas(filtros?: {
   status?: string
   dataInicio?: string
   dataFim?: string
+  paciente?: string
 }) {
   let q = supabase
     .from('parcelas')
@@ -19,7 +20,16 @@ export async function listarParcelas(filtros?: {
 
   const { data, error } = await q
   if (error) throw error
-  return data as (Parcela & { lancamentos: { paciente: string; parceria_id: string } })[]
+
+  let result = data as (Parcela & { lancamentos: { paciente: string; parceria_id: string } })[]
+
+  // Filtro de paciente client-side (campo de tabela relacionada)
+  if (filtros?.paciente) {
+    const termo = filtros.paciente.toLowerCase()
+    result = result.filter(p => p.lancamentos?.paciente?.toLowerCase().includes(termo))
+  }
+
+  return result
 }
 
 export async function marcarParcelaPaga(id: string) {

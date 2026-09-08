@@ -3,6 +3,7 @@ import { LayoutDashboard, ClipboardList, CreditCard, BarChart3, FileText, Users,
 import { useAuth } from "@/contexts/AuthContext"
 import { usePerfil } from "@/contexts/PerfilContext"
 import { useParcelasAlerta } from "@/hooks/useResumo"
+import { useRepassesPendentesAlerta } from "@/hooks/useRepasses"
 import type { Role } from "@/contexts/PerfilContext"
 
 interface NavItem {
@@ -10,16 +11,17 @@ interface NavItem {
   label: string
   icon: React.ElementType
   roles: Role[]
-  badge?: boolean
+  badge?: 'parcelas' | 'repasses'
 }
 
 const nav: NavItem[] = [
   { to: '/',              label: 'Dashboard',     icon: LayoutDashboard, roles: ['admin', 'gestor'] },
   { to: '/lancamentos',   label: 'Lançamentos',   icon: ClipboardList,   roles: ['admin', 'gestor'] },
-  { to: '/parcelas',      label: 'Parcelas',      icon: CreditCard,      roles: ['admin', 'gestor'], badge: true },
+  { to: '/parcelas',      label: 'Parcelas',      icon: CreditCard,      roles: ['admin', 'gestor'], badge: 'parcelas' },
+
   { to: '/resumo',        label: 'Resumo',        icon: BarChart3,       roles: ['admin', 'gestor'] },
   { to: '/extrato',       label: 'Extrato',       icon: FileText,        roles: ['admin', 'gestor', 'profissional'] },
-  { to: '/repasses',      label: 'Repasses',      icon: ArrowLeftRight,  roles: ['admin', 'gestor'] },
+  { to: '/repasses',      label: 'Repasses',      icon: ArrowLeftRight,  roles: ['admin', 'gestor'], badge: 'repasses' },
   { to: '/relatorios',    label: 'Relatórios',    icon: FileDown,        roles: ['admin', 'gestor'] },
   { to: '/usuarios',      label: 'Usuários',      icon: Users,           roles: ['admin'] },
   { to: '/configuracoes', label: 'Configurações', icon: Settings,        roles: ['admin'] },
@@ -28,9 +30,10 @@ const nav: NavItem[] = [
 const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', gestor: 'Gestor', profissional: 'Profissional' }
 
 export default function Layout() {
-  const { user, signOut }        = useAuth()
-  const { perfil, can }          = usePerfil()
-  const { data: alertaCount = 0 } = useParcelasAlerta()
+  const { user, signOut }                  = useAuth()
+  const { perfil, can }                    = usePerfil()
+  const { data: alertaCount = 0 }          = useParcelasAlerta()
+  const { data: repassesAlerta = 0 }       = useRepassesPendentesAlerta()
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -56,9 +59,14 @@ export default function Layout() {
             >
               <Icon size={18} />
               <span className="flex-1">{label}</span>
-              {badge && alertaCount > 0 && (
+              {badge === 'parcelas' && alertaCount > 0 && (
                 <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                   {alertaCount}
+                </span>
+              )}
+              {badge === 'repasses' && repassesAlerta > 0 && (
+                <span className="bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {repassesAlerta}
                 </span>
               )}
             </NavLink>
