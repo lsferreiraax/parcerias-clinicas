@@ -1,11 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode, AlertTriangle, XCircle, History } from 'lucide-react'
 import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/components/ui'
-import { useLancamentos, useCriarLancamento, useAtualizarStatusLancamento, useDeletarLancamento, useEditarLancamento, useDeletarEmLote } from '@/hooks/useLancamentos'
+import {
+  useLancamentos, useCriarLancamento, useAtualizarStatusLancamento,
+  useDeletarLancamento, useEditarLancamento, useDeletarEmLote,
+  useCancelarLancamento, useLogEdicaoLancamento,
+} from '@/hooks/useLancamentos'
+import { useParcerias } from '@/hooks/useConfiguracoes'
 import { fmt } from '@/lib/utils'
-import { calcularRateio, LABELS_PARCERIA } from '@/services/rateio'
+import { calcularRateio } from '@/services/rateio'
 import { usePerfil } from '@/contexts/PerfilContext'
 import type { Lancamento, ParceriaId, FormaPagamento } from '@/types'
+import type { ParceriaConfig } from '@/services/rateio'
 
 const MEIOS_PAGAMENTO = [
   { value: 'cartao_credito', label: 'Cartão de Crédito', icon: CreditCard },
@@ -13,13 +19,7 @@ const MEIOS_PAGAMENTO = [
   { value: 'dinheiro',       label: 'Dinheiro',           icon: Banknote   },
 ] as const
 
-function MeioPagamentoCheckboxes({
-  value,
-  onChange,
-}: {
-  value: string[]
-  onChange: (v: string[]) => void
-}) {
+function MeioPagamentoCheckboxes({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const toggle = (meio: string) =>
     onChange(value.includes(meio) ? value.filter(m => m !== meio) : [...value, meio])
 
@@ -38,12 +38,7 @@ function MeioPagamentoCheckboxes({
                   : 'border-gray-300 text-gray-600 hover:border-gray-400'
               }`}
             >
-              <input
-                type="checkbox"
-                className="sr-only"
-                checked={checked}
-                onChange={() => toggle(v)}
-              />
+              <input type="checkbox" className="sr-only" checked={checked} onChange={() => toggle(v)} />
               <Icon size={15} />
               {label}
             </label>
@@ -70,30 +65,6 @@ function MeioPagamentoBadges({ meios }: { meios?: string[] }) {
       })}
     </div>
   )
-}
-
-const INIT = {
-  data_atendimento: new Date().toISOString().split('T')[0],
-  paciente: '',
-  nome_responsavel: '',
-  data_pagamento: '',
-  meio_pagamento: [] as string[],
-  parceria_id: 'A' as ParceriaId,
-  forma_pagamento: 'avista' as FormaPagamento,
-  num_parcelas: 1,
-  valor_total: 0,
-  observacoes: '',
-}
-
-type FormEdicao = {
-  data_atendimento: string
-  paciente: string
-  nome_responsavel: string
-  data_pagamento: string
-  meio_pagamento: string[]
-  parceria_id: ParceriaId
-  valor_total: number
-  observacoes: string
 }
 
 function TooltipResponsavel({ nome }: { nome: string }) {
@@ -130,19 +101,98 @@ function TooltipResponsavel({ nome }: { nome: string }) {
   )
 }
 
+function RateioPreview({ config, valor_total }: { config: ParceriaConfig | null; valor_total: number }) {
+  if (!config || valor_total <= 0) return null
+  const r = calcularRateio(config, valor_total)
+  return (
+    <div className="bg-gray-50 rounded-lg p-4 text-sm">
+      <p className="font-semibold text-gray-700 mb-2">Preview do Rateio</p>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        {r.camta_valor  > 0 && <div className="flex justify-between"><span className="text-gray-500">Camta</span><span className="font-medium text-blue-700">{fmt.moeda(r.camta_valor)}</span></div>}
+        {r.medico_valor > 0 && <div className="flex justify-between"><span className="text-gray-500">Médico</span><span className="font-medium text-green-700">{fmt.moeda(r.medico_valor)}</span></div>}
+        {r.psi1_valor   > 0 && <div className="flex justify-between"><span className="text-gray-500">Psi1</span><span className="font-medium text-yellow-700">{fmt.moeda(r.psi1_valor)}</span></div>}
+        {r.psi2_valor   > 0 && <div className="flex justify-between"><span className="text-gray-500">Psi2</span><span className="font-medium text-orange-700">{fmt.moeda(r.psi2_valor)}</span></div>}
+      </div>
+    </div>
+  )
+}
+
+function ModalLog({ lancamentoId, paciente, onClose }: { lancamentoId: string; paciente: string; onClose: () => void }) {
+  const { data: logs, isLoading } = useLogEdicaoLancamento(lancamentoId)
+  return (
+    <Modal open onClose={onClose} title={`Histórico — ${paciente}`}>
+      <div className="space-y-3 max-h-80 overflow-y-auto">
+        {isLoading && <p className="text-sm text-gray-400 text-center py-4">Carregando...</p>}
+        {!isLoading && (!logs || logs.length === 0) && (
+          <p className="text-sm text-gray-400 text-center py-4">Nenhuma alteração registrada.</p>
+        )}
+        {(logs ?? []).map((log: {
+          id: string; campo: string; valor_anterior: string | null
+          valor_novo: string | null; motivo?: string | null; alterado_em: string
+        }) => (
+          <div key={log.id} className="border border-gray-100 rounded-lg px-4 py-3 text-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-medium text-gray-700">{log.campo}</span>
+              <span className="text-xs text-gray-400">{new Date(log.alterado_em).toLocaleString('pt-BR')}</span>
+            </div>
+            <p className="text-gray-500 text-xs">
+              <span className="line-through text-red-400">{log.valor_anterior || '—'}</span>
+              {' → '}
+              <span className="text-green-600 font-medium">{log.valor_novo || '—'}</span>
+            </p>
+            {log.motivo && <p className="text-xs text-gray-400 mt-1 italic">Motivo: {log.motivo}</p>}
+          </div>
+        ))}
+      </div>
+      <div className="pt-4">
+        <Button variant="secondary" className="w-full" onClick={onClose}>Fechar</Button>
+      </div>
+    </Modal>
+  )
+}
+
+const INIT = {
+  data_atendimento: new Date().toISOString().split('T')[0],
+  paciente: '',
+  nome_responsavel: '',
+  data_pagamento: '',
+  meio_pagamento: [] as string[],
+  parceria_id: 'A' as ParceriaId,
+  forma_pagamento: 'avista' as FormaPagamento,
+  num_parcelas: 1,
+  valor_total: 0,
+  observacoes: '',
+}
+
+type FormEdicao = {
+  data_atendimento: string
+  paciente: string
+  nome_responsavel: string
+  data_pagamento: string
+  meio_pagamento: string[]
+  parceria_id: ParceriaId
+  valor_total: number
+  observacoes: string
+}
+
 export default function Lancamentos() {
   const { isAdmin, isGestor } = usePerfil()
   const podeEditar = isAdmin || isGestor
 
-  const [modal, setModal]               = useState(false)
-  const [modalEdicao, setModalEdicao]   = useState(false)
-  const [modalExclusao, setModalExclusao] = useState(false)
+  const { data: parcerias = [] } = useParcerias()
+
+  const [modal, setModal]                         = useState(false)
+  const [modalEdicao, setModalEdicao]             = useState(false)
+  const [modalExclusao, setModalExclusao]         = useState(false)
+  const [modalCancelar, setModalCancelar]         = useState<Lancamento | null>(null)
+  const [modalLog, setModalLog]                   = useState<Lancamento | null>(null)
   const [lancamentoEditando, setLancamentoEditando] = useState<Lancamento | null>(null)
-  const [filtros, setFiltros]           = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
-  const [form, setForm]                 = useState(INIT)
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
-  const [motivoExclusao, setMotivoExclusao] = useState('')
-  const [formEdicao, setFormEdicao] = useState<FormEdicao>({
+  const [filtros, setFiltros]                     = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
+  const [form, setForm]                           = useState(INIT)
+  const [selecionados, setSelecionados]           = useState<Set<string>>(new Set())
+  const [motivoExclusao, setMotivoExclusao]       = useState('')
+  const [motivoCancelamento, setMotivoCancelamento] = useState('')
+  const [formEdicao, setFormEdicao]               = useState<FormEdicao>({
     data_atendimento: '',
     paciente: '',
     nome_responsavel: '',
@@ -156,14 +206,24 @@ export default function Lancamentos() {
   const { data: lancamentos, isLoading } = useLancamentos(filtros)
   const criar          = useCriarLancamento()
   const atualizar      = useAtualizarStatusLancamento()
+  const cancelar       = useCancelarLancamento()
   const deletar        = useDeletarLancamento()
   const editar         = useEditarLancamento()
   const deletarLote    = useDeletarEmLote()
 
-  // Lançamentos disponíveis para seleção (apenas não-pagos)
-  const selecionaveis  = (lancamentos ?? []).filter(l => l.status !== 'pago')
-  const todosSelecionados = selecionaveis.length > 0 && selecionaveis.every(l => selecionados.has(l.id))
+  const selecionaveis      = (lancamentos ?? []).filter(l => l.status !== 'pago')
+  const todosSelecionados  = selecionaveis.length > 0 && selecionaveis.every(l => selecionados.has(l.id))
   const algunsSelecionados = selecionaveis.some(l => selecionados.has(l.id))
+
+  const getParceriaConfig = (id: ParceriaId): ParceriaConfig | null => {
+    const p = parcerias.find(p => p.id === id)
+    return p ? { camta_pct: p.camta_pct, medico_pct: p.medico_pct, psi1_pct: p.psi1_pct, psi2_pct: p.psi2_pct } : null
+  }
+
+  const getParceriaLabel = (id: ParceriaId): string => {
+    const p = parcerias.find(p => p.id === id)
+    return p?.descricao || `Parceria ${id}`
+  }
 
   const toggleSelecionado = (id: string, status: string) => {
     if (status === 'pago') return
@@ -194,9 +254,12 @@ export default function Lancamentos() {
     setModalExclusao(false)
   }
 
-  const rateioPreview = form.valor_total > 0
-    ? calcularRateio(form.parceria_id, form.valor_total)
-    : null
+  const handleCancelar = async () => {
+    if (!modalCancelar || !motivoCancelamento.trim()) return
+    await cancelar.mutateAsync({ id: modalCancelar.id, motivo: motivoCancelamento.trim() })
+    setModalCancelar(null)
+    setMotivoCancelamento('')
+  }
 
   const handleSubmit = async () => {
     if (!form.paciente || !form.valor_total) return
@@ -242,21 +305,6 @@ export default function Lancamentos() {
     setLancamentoEditando(null)
   }
 
-  const RateioPreview = ({ parceria_id, valor_total }: { parceria_id: ParceriaId; valor_total: number }) => {
-    const r = calcularRateio(parceria_id, valor_total)
-    return (
-      <div className="bg-gray-50 rounded-lg p-4 text-sm">
-        <p className="font-semibold text-gray-700 mb-2">Preview do Rateio</p>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          {r.camta_valor  > 0 && <div className="flex justify-between"><span className="text-gray-500">Camta</span><span className="font-medium text-blue-700">{fmt.moeda(r.camta_valor)}</span></div>}
-          {r.medico_valor > 0 && <div className="flex justify-between"><span className="text-gray-500">Médico</span><span className="font-medium text-green-700">{fmt.moeda(r.medico_valor)}</span></div>}
-          <div className="flex justify-between"><span className="text-gray-500">Psi1</span><span className="font-medium text-yellow-700">{fmt.moeda(r.psi1_valor)}</span></div>
-          <div className="flex justify-between"><span className="text-gray-500">Psi2</span><span className="font-medium text-orange-700">{fmt.moeda(r.psi2_valor)}</span></div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -266,10 +314,7 @@ export default function Lancamentos() {
         </div>
         <div className="flex gap-2">
           {podeEditar && selecionados.size > 0 && (
-            <Button
-              onClick={abrirModalExclusao}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <Button onClick={abrirModalExclusao} className="bg-red-600 hover:bg-red-700">
               <Trash2 size={16} />
               Excluir selecionados ({selecionados.size})
             </Button>
@@ -284,7 +329,7 @@ export default function Lancamentos() {
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
             onChange={e => setFiltros(f => ({ ...f, parceria: e.target.value || undefined }))}>
             <option value="">Todas as parcerias</option>
-            {(['A','B','C'] as ParceriaId[]).map(p => <option key={p} value={p}>Parceria {p}</option>)}
+            {parcerias.map(p => <option key={p.id} value={p.id}>{p.descricao || `Parceria ${p.id}`}</option>)}
           </select>
           <select
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
@@ -337,69 +382,84 @@ export default function Lancamentos() {
               {(lancamentos ?? []).map(l => {
                 const isSelecionado = selecionados.has(l.id)
                 const isPago        = l.status === 'pago'
+                const isCancelado   = l.status === 'cancelado'
                 return (
-                <tr key={l.id} className={`hover:bg-gray-50 ${isSelecionado ? 'bg-red-50' : ''}`}>
-                  {podeEditar && (
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={isSelecionado}
-                        disabled={isPago}
-                        onChange={() => toggleSelecionado(l.id, l.status)}
-                        className="rounded border-gray-300 text-red-600 focus:ring-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={isPago ? 'Lançamentos pagos não podem ser excluídos' : ''}
-                      />
+                  <tr key={l.id} className={`hover:bg-gray-50 ${isSelecionado ? 'bg-red-50' : ''} ${isCancelado ? 'opacity-60' : ''}`}>
+                    {podeEditar && (
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelecionado}
+                          disabled={isPago}
+                          onChange={() => toggleSelecionado(l.id, l.status)}
+                          className="rounded border-gray-300 text-red-600 focus:ring-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title={isPago ? 'Lançamentos pagos não podem ser excluídos' : ''}
+                        />
+                      </td>
+                    )}
+                    <td className="px-4 py-3 whitespace-nowrap">{fmt.data(l.data_atendimento)}</td>
+                    <td className="px-4 py-3 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        {l.paciente}
+                        {l.nome_responsavel && <TooltipResponsavel nome={l.nome_responsavel} />}
+                      </div>
                     </td>
-                  )}
-                  <td className="px-4 py-3 whitespace-nowrap">{fmt.data(l.data_atendimento)}</td>
-                  <td className="px-4 py-3 font-medium">
-                    <div className="flex items-center gap-1.5">
-                      {l.paciente}
-                      {l.nome_responsavel && <TooltipResponsavel nome={l.nome_responsavel} />}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3"><Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge></td>
-                  <td className="px-4 py-3">{l.forma_pagamento === 'avista' ? 'À Vista' : `Parcelado ${l.num_parcelas}x`}</td>
-                  <td className="px-4 py-3"><MeioPagamentoBadges meios={l.meio_pagamento} /></td>
-                  <td className="px-4 py-3 font-semibold">{fmt.moeda(l.valor_total)}</td>
-                  <td className="px-4 py-3 text-blue-700">{l.camta_valor > 0 ? fmt.moeda(l.camta_valor) : '—'}</td>
-                  <td className="px-4 py-3 text-green-700">{l.medico_valor > 0 ? fmt.moeda(l.medico_valor) : '—'}</td>
-                  <td className="px-4 py-3 text-yellow-700">{fmt.moeda(l.psi1_valor)}</td>
-                  <td className="px-4 py-3 text-orange-700">{fmt.moeda(l.psi2_valor)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                    {l.data_pagamento ? fmt.data(l.data_pagamento) : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={l.status === 'pago' ? 'success' : l.status === 'cancelado' ? 'danger' : 'warning'}>
-                      {l.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      {l.status === 'pendente' && (
-                        <button
-                          onClick={() => atualizar.mutate({ id: l.id, status: 'pago' })}
-                          className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Marcar como pago">
-                          <CheckCircle size={15} />
-                        </button>
-                      )}
-                      {podeEditar && (
-                        <button
-                          onClick={() => abrirEdicao(l)}
-                          className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar lançamento">
-                          <Pencil size={15} />
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => { if (window.confirm('Excluir lançamento?')) deletar.mutate(l.id) }}
-                          className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="Excluir">
-                          <Trash2 size={15} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+                    <td className="px-4 py-3"><Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge></td>
+                    <td className="px-4 py-3">{l.forma_pagamento === 'avista' ? 'À Vista' : `Parcelado ${l.num_parcelas}x`}</td>
+                    <td className="px-4 py-3"><MeioPagamentoBadges meios={l.meio_pagamento} /></td>
+                    <td className="px-4 py-3 font-semibold">{fmt.moeda(l.valor_total)}</td>
+                    <td className="px-4 py-3 text-blue-700">{l.camta_valor > 0 ? fmt.moeda(l.camta_valor) : '—'}</td>
+                    <td className="px-4 py-3 text-green-700">{l.medico_valor > 0 ? fmt.moeda(l.medico_valor) : '—'}</td>
+                    <td className="px-4 py-3 text-yellow-700">{fmt.moeda(l.psi1_valor)}</td>
+                    <td className="px-4 py-3 text-orange-700">{fmt.moeda(l.psi2_valor)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">
+                      {l.data_pagamento ? fmt.data(l.data_pagamento) : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={l.status === 'pago' ? 'success' : l.status === 'cancelado' ? 'danger' : 'warning'}>
+                        {l.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
+                        {l.status === 'pendente' && (
+                          <button
+                            onClick={() => atualizar.mutate({ id: l.id, status: 'pago' })}
+                            className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Marcar como pago">
+                            <CheckCircle size={15} />
+                          </button>
+                        )}
+                        {l.status === 'pendente' && podeEditar && (
+                          <button
+                            onClick={() => { setMotivoCancelamento(''); setModalCancelar(l) }}
+                            className="p-1.5 text-orange-500 hover:bg-orange-50 rounded" title="Cancelar lançamento">
+                            <XCircle size={15} />
+                          </button>
+                        )}
+                        {podeEditar && !isCancelado && (
+                          <button
+                            onClick={() => abrirEdicao(l)}
+                            className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar lançamento">
+                            <Pencil size={15} />
+                          </button>
+                        )}
+                        {podeEditar && (
+                          <button
+                            onClick={() => setModalLog(l)}
+                            className="p-1.5 text-gray-400 hover:bg-gray-100 rounded" title="Histórico de edições">
+                            <History size={15} />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => { if (window.confirm('Excluir lançamento?')) deletar.mutate(l.id) }}
+                            className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="Excluir">
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 )
               })}
             </tbody>
@@ -420,7 +480,6 @@ export default function Lancamentos() {
               </p>
             </div>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Motivo da exclusão <span className="text-red-500">*</span>
@@ -433,11 +492,8 @@ export default function Lancamentos() {
               onChange={e => setMotivoExclusao(e.target.value)}
             />
           </div>
-
           <div className="flex gap-3 pt-1">
-            <Button variant="secondary" className="flex-1" onClick={() => setModalExclusao(false)}>
-              Cancelar
-            </Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setModalExclusao(false)}>Cancelar</Button>
             <Button
               className="flex-1 bg-red-600 hover:bg-red-700"
               loading={deletarLote.isPending}
@@ -451,6 +507,42 @@ export default function Lancamentos() {
         </div>
       </Modal>
 
+      {/* Modal: Cancelar lançamento */}
+      {modalCancelar && (
+        <Modal open onClose={() => setModalCancelar(null)} title="Cancelar Lançamento">
+          <div className="space-y-4">
+            <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-sm text-orange-800">
+              <p className="font-semibold mb-1">Confirmar cancelamento</p>
+              <p>O lançamento de <strong>{modalCancelar.paciente}</strong> ({fmt.moeda(Number(modalCancelar.valor_total))}) será cancelado. Esta ação ficará registrada no histórico.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Motivo do cancelamento <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
+                rows={3}
+                placeholder="Descreva o motivo do cancelamento..."
+                value={motivoCancelamento}
+                onChange={e => setMotivoCancelamento(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="secondary" className="flex-1" onClick={() => setModalCancelar(null)}>Voltar</Button>
+              <Button
+                className="flex-1 bg-orange-600 hover:bg-orange-700"
+                loading={cancelar.isPending}
+                disabled={!motivoCancelamento.trim()}
+                onClick={handleCancelar}
+              >
+                <XCircle size={15} />
+                Confirmar cancelamento
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Modal: Novo Lançamento */}
       <Modal open={modal} onClose={() => setModal(false)} title="Novo Lançamento">
         <div className="space-y-4">
@@ -462,8 +554,8 @@ export default function Lancamentos() {
             <Select
               label="Parceria" value={form.parceria_id}
               onChange={e => setForm(f => ({ ...f, parceria_id: e.target.value as ParceriaId }))}>
-              {(['A','B','C'] as ParceriaId[]).map(p => (
-                <option key={p} value={p}>{LABELS_PARCERIA[p]}</option>
+              {parcerias.map(p => (
+                <option key={p.id} value={p.id}>{getParceriaLabel(p.id as ParceriaId)}</option>
               ))}
             </Select>
           </div>
@@ -514,9 +606,7 @@ export default function Lancamentos() {
             onChange={v => setForm(f => ({ ...f, meio_pagamento: v }))}
           />
 
-          {rateioPreview && (
-            <RateioPreview parceria_id={form.parceria_id} valor_total={form.valor_total} />
-          )}
+          <RateioPreview config={getParceriaConfig(form.parceria_id)} valor_total={form.valor_total} />
 
           <Input
             label="Observações (opcional)" placeholder="..."
@@ -548,8 +638,8 @@ export default function Lancamentos() {
             <Select
               label="Parceria" value={formEdicao.parceria_id}
               onChange={e => setFormEdicao(f => ({ ...f, parceria_id: e.target.value as ParceriaId }))}>
-              {(['A','B','C'] as ParceriaId[]).map(p => (
-                <option key={p} value={p}>{LABELS_PARCERIA[p]}</option>
+              {parcerias.map(p => (
+                <option key={p.id} value={p.id}>{getParceriaLabel(p.id as ParceriaId)}</option>
               ))}
             </Select>
           </div>
@@ -581,9 +671,7 @@ export default function Lancamentos() {
             onChange={v => setFormEdicao(f => ({ ...f, meio_pagamento: v }))}
           />
 
-          {formEdicao.valor_total > 0 && (
-            <RateioPreview parceria_id={formEdicao.parceria_id} valor_total={formEdicao.valor_total} />
-          )}
+          <RateioPreview config={getParceriaConfig(formEdicao.parceria_id)} valor_total={formEdicao.valor_total} />
 
           <Input
             label="Observações (opcional)" placeholder="..."
@@ -596,6 +684,15 @@ export default function Lancamentos() {
           </div>
         </div>
       </Modal>
+
+      {/* Modal: Histórico de edições */}
+      {modalLog && (
+        <ModalLog
+          lancamentoId={modalLog.id}
+          paciente={modalLog.paciente}
+          onClose={() => setModalLog(null)}
+        />
+      )}
     </div>
   )
 }

@@ -1,6 +1,17 @@
 import { supabase } from '@/lib/supabase'
 import { calcularRateio } from './rateio'
 import type { Lancamento, ParceriaId, FormaPagamento } from '@/types'
+import type { ParceriaConfig } from './rateio'
+
+async function getParceriaConfig(parceriaId: ParceriaId): Promise<ParceriaConfig> {
+  const { data, error } = await supabase
+    .from('parcerias')
+    .select('camta_pct, medico_pct, psi1_pct, psi2_pct')
+    .eq('id', parceriaId)
+    .single()
+  if (error) throw error
+  return data as ParceriaConfig
+}
 
 export interface NovoLancamento {
   data_atendimento: string
@@ -16,7 +27,8 @@ export interface NovoLancamento {
 }
 
 export async function criarLancamento(dados: NovoLancamento) {
-  const rateio = calcularRateio(dados.parceria_id, dados.valor_total)
+  const config = await getParceriaConfig(dados.parceria_id)
+  const rateio = calcularRateio(config, dados.valor_total)
 
   const { data, error } = await supabase
     .from('lancamentos')
@@ -26,10 +38,9 @@ export async function criarLancamento(dados: NovoLancamento) {
 
   if (error) throw error
 
-  // Se parcelado, cria as parcelas automaticamente
   if (dados.forma_pagamento === 'parcelado' && dados.num_parcelas > 1) {
     const valorParcela = Math.round((dados.valor_total / dados.num_parcelas) * 100) / 100
-    const rateioParc = calcularRateio(dados.parceria_id, valorParcela)
+    const rateioParc = calcularRateio(config, valorParcela)
     const hoje = new Date(dados.data_atendimento)
 
     const parcelas = Array.from({ length: dados.num_parcelas }, (_, i) => {
@@ -78,6 +89,34 @@ export async function atualizarStatusLancamento(id: string, status: string) {
   if (error) throw error
 }
 
+export async function cancelarLancamento(id: string, motivo: string) {
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: atual, error: errBusca } = await supabase
+    .from('lancamentos')
+    .select('status, paciente, parceria_id, valor_total')
+    .eq('id', id)
+    .single()
+  if (errBusca) throw errBusca
+
+  if (atual.status === 'pago') throw new Error('Lançamentos pagos não podem ser cancelados.')
+
+  const { error } = await supabase
+    .from('lancamentos')
+    .update({ status: 'cancelado' })
+    .eq('id', id)
+  if (error) throw error
+
+  await supabase.from('lancamentos_edicoes_log').insert({
+    lancamento_id:  id,
+    campo:          'status',
+    valor_anterior: atual.status,
+    valor_novo:     'cancelado',
+    motivo,
+    alterado_por:   user?.id ?? null,
+  })
+}
+
 export interface EdicaoLancamento {
   data_atendimento: string
   paciente: string
@@ -89,17 +128,53 @@ export interface EdicaoLancamento {
   observacoes?: string
 }
 
-export async function editarLancamento(id: string, dados: EdicaoLancamento) {
-  const rateio = calcularRateio(dados.parceria_id, dados.valor_total)
+type CampoAuditoria = { key: 'data_atendimento' | 'paciente' | 'parceria_id' | 'valor_total' | 'observacoes'; label: string }
 
-  // 1. Atualiza o lançamento
+const CAMPOS_AUDITORIA: CampoAuditoria[] = [
+  { key: 'data_atendimento', label: 'Data do Atendimento' },
+  { key: 'paciente',         label: 'Paciente'            },
+  { key: 'parceria_id',      label: 'Parceria'            },
+  { key: 'valor_total',      label: 'Valor Total'         },
+  { key: 'observacoes',      label: 'Observações'         },
+]
+
+export async function editarLancamento(id: string, dados: EdicaoLancamento) {
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: atual, error: errBusca } = await supabase
+    .from('lancamentos')
+    .select('data_atendimento, paciente, parceria_id, valor_total, observacoes')
+    .eq('id', id)
+    .single()
+  if (errBusca) throw errBusca
+
+  const config = await getParceriaConfig(dados.parceria_id)
+  const rateio = calcularRateio(config, dados.valor_total)
+
   const { error } = await supabase
     .from('lancamentos')
     .update({ ...dados, ...rateio })
     .eq('id', id)
   if (error) throw error
 
-  // 2. Recalcula rateio das parcelas pendentes
+  // Grava log dos campos alterados
+  const atualTyped = atual as Record<CampoAuditoria['key'], unknown>
+  const dadosTyped = dados as Record<CampoAuditoria['key'], unknown>
+  const logs = CAMPOS_AUDITORIA
+    .filter(({ key }) => String(atualTyped[key] ?? '') !== String(dadosTyped[key] ?? ''))
+    .map(({ key, label }) => ({
+      lancamento_id:  id,
+      campo:          label,
+      valor_anterior: String(atualTyped[key] ?? ''),
+      valor_novo:     String(dadosTyped[key] ?? ''),
+      alterado_por:   user?.id ?? null,
+    }))
+
+  if (logs.length > 0) {
+    await supabase.from('lancamentos_edicoes_log').insert(logs)
+  }
+
+  // Recalcula rateio das parcelas pendentes
   const { data: parcelas } = await supabase
     .from('parcelas')
     .select('id, valor_parcela')
@@ -109,7 +184,7 @@ export async function editarLancamento(id: string, dados: EdicaoLancamento) {
   if (parcelas && parcelas.length > 0) {
     await Promise.all(
       parcelas.map(p => {
-        const rateioParc = calcularRateio(dados.parceria_id, Number(p.valor_parcela))
+        const rateioParc = calcularRateio(config, Number(p.valor_parcela))
         return supabase
           .from('parcelas')
           .update(rateioParc)
@@ -119,13 +194,22 @@ export async function editarLancamento(id: string, dados: EdicaoLancamento) {
   }
 }
 
+export async function buscarLogEdicaoLancamento(lancamentoId: string) {
+  const { data, error } = await supabase
+    .from('lancamentos_edicoes_log')
+    .select('*')
+    .eq('lancamento_id', lancamentoId)
+    .order('alterado_em', { ascending: false })
+  if (error) throw error
+  return data
+}
+
 export async function deletarLancamento(id: string) {
   const { error } = await supabase.from('lancamentos').delete().eq('id', id)
   if (error) throw error
 }
 
 export async function deletarEmLote(ids: string[], motivo: string) {
-  // Busca dados para o log antes de excluir
   const { data: lancamentos, error: errBusca } = await supabase
     .from('lancamentos')
     .select('id, paciente, parceria_id, valor_total, num_parcelas')
@@ -134,7 +218,6 @@ export async function deletarEmLote(ids: string[], motivo: string) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Grava log de exclusão
   const logs = (lancamentos ?? []).map(l => ({
     lancamento_id: l.id,
     paciente:      l.paciente,
@@ -149,7 +232,6 @@ export async function deletarEmLote(ids: string[], motivo: string) {
     if (errLog) throw errLog
   }
 
-  // Exclui lançamentos (parcelas removidas por CASCADE)
   const { error } = await supabase.from('lancamentos').delete().in('id', ids)
   if (error) throw error
 }

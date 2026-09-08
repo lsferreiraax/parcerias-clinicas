@@ -1,27 +1,21 @@
 import type { ParceriaId, RateioResult } from '@/types'
 
-const PERCENTUAIS: Record<ParceriaId, { camta: number; medico: number; psi1: number; psi2: number }> = {
-  A: { camta: 0.20, medico: 0,    psi1: 0.30, psi2: 0.50 },
-  B: { camta: 0,    medico: 0.10, psi1: 0.40, psi2: 0.50 },
-  C: { camta: 0,    medico: 0,    psi1: 0.40, psi2: 0.60 },
+export interface ParceriaConfig {
+  camta_pct: number
+  medico_pct: number
+  psi1_pct: number
+  psi2_pct: number
 }
 
 const arr = (v: number) => Math.round(v * 100) / 100
 
-export function calcularRateio(parceriaId: ParceriaId, valor: number): RateioResult {
-  const p = PERCENTUAIS[parceriaId]
+export function calcularRateio(config: ParceriaConfig, valor: number): RateioResult {
   return {
-    camta_valor:  arr(valor * p.camta),
-    medico_valor: arr(valor * p.medico),
-    psi1_valor:   arr(valor * p.psi1),
-    psi2_valor:   arr(valor * p.psi2),
+    camta_valor:  arr(valor * config.camta_pct),
+    medico_valor: arr(valor * config.medico_pct),
+    psi1_valor:   arr(valor * config.psi1_pct),
+    psi2_valor:   arr(valor * config.psi2_pct),
   }
-}
-
-export const LABELS_PARCERIA: Record<ParceriaId, string> = {
-  A: 'Parceria A — Camta 20% · Psi1 30% · Psi2 50%',
-  B: 'Parceria B — Médico 10% · Psi1 40% · Psi2 50%',
-  C: 'Parceria C — Psi1 40% · Psi2 60%',
 }
 
 export const CORES_PARCERIA: Record<ParceriaId, string> = {

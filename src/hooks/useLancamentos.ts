@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { criarLancamento, listarLancamentos, atualizarStatusLancamento, deletarLancamento, editarLancamento, deletarEmLote } from '@/services/lancamentos'
+import {
+  criarLancamento, listarLancamentos, atualizarStatusLancamento,
+  cancelarLancamento, deletarLancamento, editarLancamento,
+  deletarEmLote, buscarLogEdicaoLancamento,
+} from '@/services/lancamentos'
 import type { NovoLancamento, EdicaoLancamento } from '@/services/lancamentos'
 
 export function useLancamentos(filtros?: Parameters<typeof listarLancamentos>[0]) {
@@ -22,6 +26,18 @@ export function useAtualizarStatusLancamento() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => atualizarStatusLancamento(id, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['lancamentos'] }),
+  })
+}
+
+export function useCancelarLancamento() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, motivo }: { id: string; motivo: string }) => cancelarLancamento(id, motivo),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lancamentos'] })
+      qc.invalidateQueries({ queryKey: ['kpis'] })
+      qc.invalidateQueries({ queryKey: ['resumo-parceria'] })
+    },
   })
 }
 
@@ -58,5 +74,13 @@ export function useEditarLancamento() {
       qc.invalidateQueries({ queryKey: ['kpi-comparativo'] })
       qc.invalidateQueries({ queryKey: ['receita-mensal'] })
     },
+  })
+}
+
+export function useLogEdicaoLancamento(lancamentoId: string | null) {
+  return useQuery({
+    queryKey: ['lancamento-log', lancamentoId],
+    queryFn: () => buscarLogEdicaoLancamento(lancamentoId!),
+    enabled: !!lancamentoId,
   })
 }

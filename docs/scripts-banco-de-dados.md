@@ -222,6 +222,36 @@ ON CONFLICT (lancamento_id, tipo) DO NOTHING;
 
 ---
 
+## 012 — Log de edições e cancelamentos de lançamentos
+
+**Arquivo:** `supabase/migrations/012_lancamentos_edicoes_log.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS lancamentos_edicoes_log (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  lancamento_id   UUID        NOT NULL REFERENCES lancamentos(id) ON DELETE CASCADE,
+  campo           TEXT        NOT NULL,   -- ex: 'Valor Total', 'Parceria', 'status'
+  valor_anterior  TEXT,
+  valor_novo      TEXT,
+  motivo          TEXT,                   -- obrigatório para cancelamentos
+  alterado_por    UUID        REFERENCES auth.users(id),
+  alterado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+**RLS:**
+- SELECT: apenas admin e gestor
+- INSERT: qualquer autenticado (escrita via service)
+
+**Propósito:**
+- Rastrear todas as edições de lançamentos (campo a campo)
+- Registrar cancelamentos com motivo obrigatório
+- Acessível via botão "Histórico" (ícone History) em cada linha da tela de Lançamentos
+
+> **Observação:** Execute esta migration manualmente no SQL Editor do Supabase antes do deploy.
+
+---
+
 ## Diagnóstico útil
 
 ```sql
