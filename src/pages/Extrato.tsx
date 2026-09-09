@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react'
 import { FileDown, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import {
+  ResponsiveContainer, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ReferenceLine,
+} from 'recharts'
 import { Card, CardHeader, CardBody, Badge, Button, FiltroData, KpiCard } from '@/components/ui'
-import { useExtrato } from '@/hooks/useExtrato'
+import { useExtrato, useExtratoMensal } from '@/hooks/useExtrato'
 import { usePerfil } from '@/contexts/PerfilContext'
 import { fmt } from '@/lib/utils'
 import { gerarComprovante } from '@/services/relatorio'
@@ -40,8 +45,22 @@ export default function Extrato() {
   const total = (linhas ?? []).reduce((s, l) => s + l.valor_profissional, 0)
   const pagas = (linhas ?? []).filter(l => l.status === 'pago').reduce((s, l) => s + l.valor_profissional, 0)
 
-  const profLabel = PROFISSIONAIS.find(p => p.value === profissional)?.label ?? profissional
+  const profLabel   = PROFISSIONAIS.find(p => p.value === profissional)?.label ?? profissional
   const usuarioNome = perfil?.nome ?? 'Usuário'
+  const profColor   = PROFISSIONAIS.find(p => p.value === profissional)?.color ?? 'bg-blue-600'
+  const lineColor   = profColor.replace('bg-', '').replace('-600', '').replace('-500', '')
+  const CORES: Record<string, string> = {
+    blue: '#2563eb', green: '#16a34a', yellow: '#ca8a04', orange: '#ea580c',
+  }
+  const cor = CORES[lineColor] ?? '#1F3864'
+
+  const { data: mensal } = useExtratoMensal(profissional)
+
+  const mediaMensal = mensal && mensal.some(p => p.valor > 0)
+    ? mensal.filter(p => p.valor > 0).reduce((s, p) => s + p.valor, 0) /
+      mensal.filter(p => p.valor > 0).length
+    : 0
+  const melhorMes = mensal ? mensal.reduce((m, p) => p.valor > m.valor ? p : m, mensal[0]) : null
 
   const exportar = () => {
     const rows = (linhas ?? []).map(l => ({
@@ -109,6 +128,57 @@ export default function Extrato() {
         <KpiCard label="Total a Receber" value={fmt.moeda(total)}          color="border-l-yellow-400" />
         <KpiCard label="Total Pago"    value={fmt.moeda(pagas)}            color="border-l-green-500" />
       </div>
+
+      {/* Gráfico de evolução mensal */}
+      {mensal && mensal.some(p => p.valor > 0) && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="font-semibold text-[#1F3864]">Evolução Mensal — {profLabel}</h2>
+              <div className="flex gap-4 text-sm text-gray-500">
+                <span>Média: <strong className="text-gray-700">{fmt.moeda(mediaMensal)}</strong></span>
+                {melhorMes && melhorMes.valor > 0 && (
+                  <span>Melhor mês: <strong className="text-gray-700">{melhorMes.mes} ({fmt.moeda(melhorMes.valor)})</strong></span>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={mensal} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="mes"
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={v => v === 0 ? '' : `R$${(v / 1000).toFixed(0)}k`}
+                  width={48}
+                />
+                <Tooltip
+                  formatter={(v: number) => [fmt.moeda(v), profLabel]}
+                  labelStyle={{ fontWeight: 600, color: '#1f2937' }}
+                  contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                />
+                <ReferenceLine y={mediaMensal} stroke="#9ca3af" strokeDasharray="4 2" />
+                <Line
+                  type="monotone"
+                  dataKey="valor"
+                  stroke={cor}
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: cor, strokeWidth: 0 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Tabela */}
       <Card>
