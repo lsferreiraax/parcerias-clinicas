@@ -272,7 +272,7 @@ O Extrato mostra uma lista plana de repasses. O profissional não tem visão de 
 ---
 
 ### 6.2 Comprovante de repasse em PDF
-**Status:** 📋 Planejado  
+**Status:** ✅ Implementado (2026-09-09)  
 **Relevância:** ⭐⭐⭐ | **Tokens est.:** ~8k
 
 **Problema:**
@@ -339,6 +339,7 @@ Não há um painel centralizado mostrando todas as parcelas renegociadas. A info
 | 2026-09-07 | Repasse vinculado à baixa                      | 3     |
 | 2026-09-08 | Detecção de duplicata (US-19)                  | 5     |
 | 2026-09-08 | Validação de integridade do rateio (US-20)     | 5     |
+| 2026-09-09 | Comprovante de repasse em PDF (6.2)            | 6     |
 | 2026-09-08 | Bug fix: percentuais de rateio ÷ 100 (014)    | —     |
 | 2026-09-08 | Busca por paciente em Lançamentos              | —     |
 | 2026-09-08 | M1 — Sidebar responsiva com drawer mobile      | M     |

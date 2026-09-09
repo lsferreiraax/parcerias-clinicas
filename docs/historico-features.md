@@ -227,6 +227,19 @@ Adicionalmente, a Parceria C foi editada via UI com valores fracionários (0.4 /
 
 ---
 
+## Fase 15 — Comprovante de Repasse em PDF (6.2)
+
+### Geração de comprovante individual por lançamento
+- Botão "Comprovante" com ícone `FileText` em cada linha da tabela do Extrato
+- Disponível para todos os perfis (admin, gestor, profissional)
+- PDF portrait A4 com o mesmo padrão visual dos demais relatórios (logo, faixa azul, rodapé)
+- Caixa de dados: paciente, data do atendimento, parceria, forma de pagamento, status e profissional
+- Dois blocos de destaque lado a lado: **Valor Total do Atendimento** e **Valor do Repasse** do profissional selecionado
+- Nome do arquivo: `comprovante_{profissional}_{paciente}_{data}.pdf`
+- **Arquivos:** `src/services/relatorio.ts` (função `gerarComprovante()`), `src/pages/Extrato.tsx`
+
+---
+
 ## Limitações conhecidas do Supabase PostgREST
 
 > **Importante para desenvolvimento futuro:**
