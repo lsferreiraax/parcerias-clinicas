@@ -368,20 +368,14 @@ export default function Lancamentos() {
       </Card>
 
       <Card>
-        <div className="overflow-x-auto">
+        {/* Versão desktop — tabela */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
                 {podeEditar && (
                   <th className="px-4 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      checked={todosSelecionados}
-                      ref={el => { if (el) el.indeterminate = algunsSelecionados && !todosSelecionados }}
-                      onChange={toggleTodos}
-                      className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864]"
-                      title="Selecionar todos (exceto pagos)"
-                    />
+                    <input type="checkbox" checked={todosSelecionados} ref={el => { if (el) el.indeterminate = algunsSelecionados && !todosSelecionados }} onChange={toggleTodos} className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864]" title="Selecionar todos (exceto pagos)" />
                   </th>
                 )}
                 {['Data','Paciente','Parceria','Pagamento','Meio','Valor Total','Camta','Médico','Psi1','Psi2','Dt. Pagamento','Status','Ações'].map(h => (
@@ -390,12 +384,8 @@ export default function Lancamentos() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {isLoading && (
-                <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
-              )}
-              {!isLoading && (!lancamentos || lancamentos.length === 0) && (
-                <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
-              )}
+              {isLoading && <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>}
+              {!isLoading && (!lancamentos || lancamentos.length === 0) && <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>}
               {(lancamentos ?? []).map(l => {
                 const isSelecionado = selecionados.has(l.id)
                 const isPago        = l.status === 'pago'
@@ -404,23 +394,11 @@ export default function Lancamentos() {
                   <tr key={l.id} className={`hover:bg-gray-50 ${isSelecionado ? 'bg-red-50' : ''} ${isCancelado ? 'opacity-60' : ''}`}>
                     {podeEditar && (
                       <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={isSelecionado}
-                          disabled={isPago}
-                          onChange={() => toggleSelecionado(l.id, l.status)}
-                          className="rounded border-gray-300 text-red-600 focus:ring-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={isPago ? 'Lançamentos pagos não podem ser excluídos' : ''}
-                        />
+                        <input type="checkbox" checked={isSelecionado} disabled={isPago} onChange={() => toggleSelecionado(l.id, l.status)} className="rounded border-gray-300 text-red-600 focus:ring-red-500 disabled:opacity-30 disabled:cursor-not-allowed" title={isPago ? 'Lançamentos pagos não podem ser excluídos' : ''} />
                       </td>
                     )}
                     <td className="px-4 py-3 whitespace-nowrap">{fmt.data(l.data_atendimento)}</td>
-                    <td className="px-4 py-3 font-medium">
-                      <div className="flex items-center gap-1.5">
-                        {l.paciente}
-                        {l.nome_responsavel && <TooltipResponsavel nome={l.nome_responsavel} />}
-                      </div>
-                    </td>
+                    <td className="px-4 py-3 font-medium"><div className="flex items-center gap-1.5">{l.paciente}{l.nome_responsavel && <TooltipResponsavel nome={l.nome_responsavel} />}</div></td>
                     <td className="px-4 py-3"><Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge></td>
                     <td className="px-4 py-3">{l.forma_pagamento === 'avista' ? 'À Vista' : `Parcelado ${l.num_parcelas}x`}</td>
                     <td className="px-4 py-3"><MeioPagamentoBadges meios={l.meio_pagamento} /></td>
@@ -429,51 +407,15 @@ export default function Lancamentos() {
                     <td className="px-4 py-3 text-green-700">{l.medico_valor > 0 ? fmt.moeda(l.medico_valor) : '—'}</td>
                     <td className="px-4 py-3 text-yellow-700">{fmt.moeda(l.psi1_valor)}</td>
                     <td className="px-4 py-3 text-orange-700">{fmt.moeda(l.psi2_valor)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                      {l.data_pagamento ? fmt.data(l.data_pagamento) : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={l.status === 'pago' ? 'success' : l.status === 'cancelado' ? 'danger' : 'warning'}>
-                        {l.status}
-                      </Badge>
-                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{l.data_pagamento ? fmt.data(l.data_pagamento) : '—'}</td>
+                    <td className="px-4 py-3"><Badge variant={l.status === 'pago' ? 'success' : l.status === 'cancelado' ? 'danger' : 'warning'}>{l.status}</Badge></td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        {l.status === 'pendente' && (
-                          <button
-                            onClick={() => atualizar.mutate({ id: l.id, status: 'pago' })}
-                            className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Marcar como pago">
-                            <CheckCircle size={15} />
-                          </button>
-                        )}
-                        {l.status === 'pendente' && podeEditar && (
-                          <button
-                            onClick={() => { setMotivoCancelamento(''); setModalCancelar(l) }}
-                            className="p-1.5 text-orange-500 hover:bg-orange-50 rounded" title="Cancelar lançamento">
-                            <XCircle size={15} />
-                          </button>
-                        )}
-                        {podeEditar && !isCancelado && (
-                          <button
-                            onClick={() => abrirEdicao(l)}
-                            className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar lançamento">
-                            <Pencil size={15} />
-                          </button>
-                        )}
-                        {podeEditar && (
-                          <button
-                            onClick={() => setModalLog(l)}
-                            className="p-1.5 text-gray-400 hover:bg-gray-100 rounded" title="Histórico de edições">
-                            <History size={15} />
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button
-                            onClick={() => { if (window.confirm('Excluir lançamento?')) deletar.mutate(l.id) }}
-                            className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="Excluir">
-                            <Trash2 size={15} />
-                          </button>
-                        )}
+                        {l.status === 'pendente' && <button onClick={() => atualizar.mutate({ id: l.id, status: 'pago' })} className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Marcar como pago"><CheckCircle size={15} /></button>}
+                        {l.status === 'pendente' && podeEditar && <button onClick={() => { setMotivoCancelamento(''); setModalCancelar(l) }} className="p-1.5 text-orange-500 hover:bg-orange-50 rounded" title="Cancelar"><XCircle size={15} /></button>}
+                        {podeEditar && !isCancelado && <button onClick={() => abrirEdicao(l)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar"><Pencil size={15} /></button>}
+                        {podeEditar && <button onClick={() => setModalLog(l)} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded" title="Histórico"><History size={15} /></button>}
+                        {isAdmin && <button onClick={() => { if (window.confirm('Excluir lançamento?')) deletar.mutate(l.id) }} className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="Excluir"><Trash2 size={15} /></button>}
                       </div>
                     </td>
                   </tr>
@@ -481,6 +423,73 @@ export default function Lancamentos() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Versão mobile — cards */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {isLoading && <p className="px-4 py-8 text-center text-gray-400 text-sm">Carregando...</p>}
+          {!isLoading && (!lancamentos || lancamentos.length === 0) && <p className="px-4 py-8 text-center text-gray-400 text-sm">Nenhum lançamento encontrado</p>}
+          {(lancamentos ?? []).map(l => {
+            const isSelecionado = selecionados.has(l.id)
+            const isPago        = l.status === 'pago'
+            const isCancelado   = l.status === 'cancelado'
+            return (
+              <div key={l.id} className={`p-4 space-y-3 ${isSelecionado ? 'bg-red-50' : ''} ${isCancelado ? 'opacity-60' : ''}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    {podeEditar && (
+                      <input type="checkbox" checked={isSelecionado} disabled={isPago} onChange={() => toggleSelecionado(l.id, l.status)} className="rounded border-gray-300 text-red-600 focus:ring-red-500 disabled:opacity-30 shrink-0" />
+                    )}
+                    <span className="font-semibold text-gray-900 truncate">{l.paciente}</span>
+                    {l.nome_responsavel && <TooltipResponsavel nome={l.nome_responsavel} />}
+                  </div>
+                  <Badge variant={l.status === 'pago' ? 'success' : l.status === 'cancelado' ? 'danger' : 'warning'}>{l.status}</Badge>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge>
+                  <span className="text-xs text-gray-500">{fmt.data(l.data_atendimento)}</span>
+                  <span className="text-xs text-gray-500">{l.forma_pagamento === 'avista' ? 'À Vista' : `${l.num_parcelas}x`}</span>
+                  <MeioPagamentoBadges meios={l.meio_pagamento} />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold text-gray-900">{fmt.moeda(l.valor_total)}</span>
+                  {l.data_pagamento && <span className="text-xs text-gray-400">Pago em {fmt.data(l.data_pagamento)}</span>}
+                </div>
+
+                <div className="grid grid-cols-4 gap-2 text-xs bg-gray-50 rounded-lg px-3 py-2">
+                  {l.camta_valor  > 0 && <div><span className="text-gray-400">Camta</span><p className="font-medium text-blue-700">{fmt.moeda(l.camta_valor)}</p></div>}
+                  {l.medico_valor > 0 && <div><span className="text-gray-400">Médico</span><p className="font-medium text-green-700">{fmt.moeda(l.medico_valor)}</p></div>}
+                  {l.psi1_valor   > 0 && <div><span className="text-gray-400">Psi1</span><p className="font-medium text-yellow-700">{fmt.moeda(l.psi1_valor)}</p></div>}
+                  {l.psi2_valor   > 0 && <div><span className="text-gray-400">Psi2</span><p className="font-medium text-orange-700">{fmt.moeda(l.psi2_valor)}</p></div>}
+                </div>
+
+                <div className="flex gap-2 pt-1 flex-wrap">
+                  {l.status === 'pendente' && (
+                    <button onClick={() => atualizar.mutate({ id: l.id, status: 'pago' })} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircle size={13} /> Marcar pago
+                    </button>
+                  )}
+                  {l.status === 'pendente' && podeEditar && (
+                    <button onClick={() => { setMotivoCancelamento(''); setModalCancelar(l) }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg">
+                      <XCircle size={13} /> Cancelar
+                    </button>
+                  )}
+                  {podeEditar && !isCancelado && (
+                    <button onClick={() => abrirEdicao(l)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg">
+                      <Pencil size={13} /> Editar
+                    </button>
+                  )}
+                  {podeEditar && (
+                    <button onClick={() => setModalLog(l)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg">
+                      <History size={13} /> Histórico
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </Card>
 

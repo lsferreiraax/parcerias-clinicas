@@ -149,7 +149,8 @@ export default function Parcelas() {
       </Card>
 
       <Card>
-        <div className="overflow-x-auto">
+        {/* Versão desktop — tabela */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
@@ -183,25 +184,14 @@ export default function Parcelas() {
                     {podeGerenciar && (
                       <td className="px-4 py-3">
                         {p.status === 'pendente' && (
-                          <input
-                            type="checkbox"
-                            checked={selecionados.has(p.id)}
-                            onChange={() => toggleSelecionado(p.id)}
-                            className="rounded"
-                          />
+                          <input type="checkbox" checked={selecionados.has(p.id)} onChange={() => toggleSelecionado(p.id)} className="rounded" />
                         )}
                       </td>
                     )}
                     <td className="px-4 py-3 font-medium">{paciente}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={(p.lancamentos?.parceria_id ?? 'A') as ParceriaId}>
-                        Parceria {p.lancamentos?.parceria_id}
-                      </Badge>
-                    </td>
+                    <td className="px-4 py-3"><Badge variant={(p.lancamentos?.parceria_id ?? 'A') as ParceriaId}>Parceria {p.lancamentos?.parceria_id}</Badge></td>
                     <td className="px-4 py-3">{p.parcela_num}/{p.parcela_total}</td>
-                    <td className={`px-4 py-3 ${vencida ? 'text-red-600 font-semibold' : ''}`}>
-                      {fmt.data(p.data_vencimento)}
-                    </td>
+                    <td className={`px-4 py-3 ${vencida ? 'text-red-600 font-semibold' : ''}`}>{fmt.data(p.data_vencimento)}</td>
                     <td className="px-4 py-3 font-semibold">{fmt.moeda(p.valor_parcela)}</td>
                     <td className="px-4 py-3 text-blue-700">{p.camta_valor > 0 ? fmt.moeda(p.camta_valor) : '—'}</td>
                     <td className="px-4 py-3 text-green-700">{p.medico_valor > 0 ? fmt.moeda(p.medico_valor) : '—'}</td>
@@ -211,24 +201,12 @@ export default function Parcelas() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         {p.status === 'pendente' && podeGerenciar && (
-                          <button
-                            onClick={() => marcarPaga.mutate(p.id)}
-                            className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Marcar como pago">
-                            <CheckCircle size={15} />
-                          </button>
+                          <button onClick={() => marcarPaga.mutate(p.id)} className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Marcar como pago"><CheckCircle size={15} /></button>
                         )}
                         {(vencida || p.status === 'renegociada') && isAdmin && (
-                          <button
-                            onClick={() => setParcelaRenegociar({ id: p.id, data_vencimento: p.data_vencimento, valor_parcela: p.valor_parcela, paciente })}
-                            className="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Renegociar">
-                            <RefreshCw size={15} />
-                          </button>
+                          <button onClick={() => setParcelaRenegociar({ id: p.id, data_vencimento: p.data_vencimento, valor_parcela: p.valor_parcela, paciente })} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Renegociar"><RefreshCw size={15} /></button>
                         )}
-                        <button
-                          onClick={() => setParcelaHistorico({ id: p.id, paciente })}
-                          className="p-1.5 text-gray-500 hover:bg-gray-100 rounded" title="Ver histórico">
-                          <History size={15} />
-                        </button>
+                        <button onClick={() => setParcelaHistorico({ id: p.id, paciente })} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded" title="Ver histórico"><History size={15} /></button>
                       </div>
                     </td>
                   </tr>
@@ -236,6 +214,68 @@ export default function Parcelas() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Versão mobile — cards */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {isLoading && <p className="px-4 py-8 text-center text-gray-400 text-sm">Carregando...</p>}
+          {!isLoading && lista.length === 0 && <p className="px-4 py-8 text-center text-gray-400 text-sm">Nenhuma parcela encontrada</p>}
+          {lista.map(p => {
+            const vencida = p.status === 'pendente' && p.data_vencimento < hoje
+            const paciente = p.lancamentos?.paciente ?? '—'
+            return (
+              <div key={p.id} className={`p-4 space-y-3 ${vencida ? 'bg-red-50/40' : ''}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {podeGerenciar && p.status === 'pendente' && (
+                      <input type="checkbox" checked={selecionados.has(p.id)} onChange={() => toggleSelecionado(p.id)} className="rounded mt-0.5" />
+                    )}
+                    <span className="font-semibold text-gray-900">{paciente}</span>
+                    <Badge variant={(p.lancamentos?.parceria_id ?? 'A') as ParceriaId}>Parceria {p.lancamentos?.parceria_id}</Badge>
+                  </div>
+                  {badgeStatus(p)}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-gray-400">Parcela</p>
+                    <p className="font-medium">{p.parcela_num}/{p.parcela_total}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Vencimento</p>
+                    <p className={`font-medium ${vencida ? 'text-red-600' : ''}`}>{fmt.data(p.data_vencimento)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Valor</p>
+                    <p className="font-bold">{fmt.moeda(p.valor_parcela)}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2 text-xs bg-gray-50 rounded-lg px-3 py-2">
+                  {p.camta_valor  > 0 && <div><span className="text-gray-400">Camta</span><p className="font-medium text-blue-700">{fmt.moeda(p.camta_valor)}</p></div>}
+                  {p.medico_valor > 0 && <div><span className="text-gray-400">Médico</span><p className="font-medium text-green-700">{fmt.moeda(p.medico_valor)}</p></div>}
+                  {p.psi1_valor   > 0 && <div><span className="text-gray-400">Psi1</span><p className="font-medium text-yellow-700">{fmt.moeda(p.psi1_valor)}</p></div>}
+                  {p.psi2_valor   > 0 && <div><span className="text-gray-400">Psi2</span><p className="font-medium text-orange-700">{fmt.moeda(p.psi2_valor)}</p></div>}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  {p.status === 'pendente' && podeGerenciar && (
+                    <button onClick={() => marcarPaga.mutate(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircle size={13} /> Baixar
+                    </button>
+                  )}
+                  {(vencida || p.status === 'renegociada') && isAdmin && (
+                    <button onClick={() => setParcelaRenegociar({ id: p.id, data_vencimento: p.data_vencimento, valor_parcela: p.valor_parcela, paciente })} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+                      <RefreshCw size={13} /> Renegociar
+                    </button>
+                  )}
+                  <button onClick={() => setParcelaHistorico({ id: p.id, paciente })} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg">
+                    <History size={13} /> Histórico
+                  </button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </Card>
 

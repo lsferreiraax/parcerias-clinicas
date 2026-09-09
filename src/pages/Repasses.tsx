@@ -277,18 +277,13 @@ export default function Repasses() {
 
       {/* Tabela */}
       <Card>
-        <div className="overflow-x-auto">
+        {/* Versão desktop */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
                 <th className="px-4 py-3 w-10">
-                  <input
-                    type="checkbox"
-                    checked={todosSelecionados}
-                    onChange={toggleTodos}
-                    className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864]"
-                    title="Selecionar todos não conciliados"
-                  />
+                  <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864]" title="Selecionar todos não conciliados" />
                 </th>
                 {['Dt. Atendimento','Paciente','Parceria','Dt. Pagamento','Vl. Original','Vl. Repasse','Dt. Repasse','Situação','Ações'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap">{h}</th>
@@ -296,77 +291,33 @@ export default function Repasses() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {isLoading && (
-                <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
-              )}
-              {!isLoading && (!repasses || repasses.length === 0) && (
-                <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-400">Nenhum repasse encontrado</td></tr>
-              )}
+              {isLoading && <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>}
+              {!isLoading && (!repasses || repasses.length === 0) && <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-400">Nenhum repasse encontrado</td></tr>}
               {(repasses ?? []).map(r => {
                 const isSel = selecionados.has(r.id)
                 const valAlterado = Number(r.valor_repasse) !== Number(r.valor_original)
                 return (
                   <tr key={r.id} className={`hover:bg-gray-50 ${isSel ? 'bg-blue-50' : ''}`}>
                     <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={isSel}
-                        disabled={r.status === 'conciliado'}
-                        onChange={() => toggleSelecionado(r.id)}
-                        className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864] disabled:opacity-30 disabled:cursor-not-allowed"
-                      />
+                      <input type="checkbox" checked={isSel} disabled={r.status === 'conciliado'} onChange={() => toggleSelecionado(r.id)} className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864] disabled:opacity-30 disabled:cursor-not-allowed" />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—'}
-                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">{r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—'}</td>
                     <td className="px-4 py-3 font-medium">{r.lancamentos?.paciente ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      {r.lancamentos?.parceria_id
-                        ? <Badge variant={r.lancamentos.parceria_id as 'A'|'B'|'C'}>Parceria {r.lancamentos.parceria_id}</Badge>
-                        : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                      {r.lancamentos?.data_pagamento ? fmt.data(r.lancamentos.data_pagamento) : '—'}
-                    </td>
+                    <td className="px-4 py-3">{r.lancamentos?.parceria_id ? <Badge variant={r.lancamentos.parceria_id as 'A'|'B'|'C'}>Parceria {r.lancamentos.parceria_id}</Badge> : '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.lancamentos?.data_pagamento ? fmt.data(r.lancamentos.data_pagamento) : '—'}</td>
                     <td className="px-4 py-3">{fmt.moeda(Number(r.valor_original))}</td>
                     <td className="px-4 py-3 font-semibold">
-                      <span className={valAlterado ? 'text-orange-600' : ''}>
-                        {fmt.moeda(Number(r.valor_repasse))}
-                      </span>
-                      {valAlterado && (
-                        <span className="ml-1 text-xs text-orange-400" title="Valor editado">✎</span>
-                      )}
+                      <span className={valAlterado ? 'text-orange-600' : ''}>{fmt.moeda(Number(r.valor_repasse))}</span>
+                      {valAlterado && <span className="ml-1 text-xs text-orange-400" title="Valor editado">✎</span>}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                      {r.data_repasse ? fmt.data(r.data_repasse) : '—'}
-                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.data_repasse ? fmt.data(r.data_repasse) : '—'}</td>
                     <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        {r.status === 'nao_conciliado' && (
-                          <button
-                            onClick={() => { setDataRepasse(new Date().toISOString().split('T')[0]); setModalConciliar(r) }}
-                            className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Conciliar">
-                            <CheckCircle size={15} />
-                          </button>
-                        )}
-                        {r.status === 'conciliado' && (
-                          <button
-                            onClick={() => { setMotivoDesc(''); setModalDesconciliar(r) }}
-                            className="p-1.5 text-yellow-500 hover:bg-yellow-50 rounded" title="Desfazer conciliação">
-                            <XCircle size={15} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleAbrirEditar(r)}
-                          className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar valor">
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          onClick={() => setModalLog(r.id)}
-                          className="p-1.5 text-gray-400 hover:bg-gray-100 rounded" title="Histórico">
-                          <History size={15} />
-                        </button>
+                        {r.status === 'nao_conciliado' && <button onClick={() => { setDataRepasse(new Date().toISOString().split('T')[0]); setModalConciliar(r) }} className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Conciliar"><CheckCircle size={15} /></button>}
+                        {r.status === 'conciliado' && <button onClick={() => { setMotivoDesc(''); setModalDesconciliar(r) }} className="p-1.5 text-yellow-500 hover:bg-yellow-50 rounded" title="Desfazer conciliação"><XCircle size={15} /></button>}
+                        <button onClick={() => handleAbrirEditar(r)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar valor"><Pencil size={15} /></button>
+                        <button onClick={() => setModalLog(r.id)} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded" title="Histórico"><History size={15} /></button>
                       </div>
                     </td>
                   </tr>
@@ -374,6 +325,71 @@ export default function Repasses() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Versão mobile — cards */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {isLoading && <p className="px-4 py-8 text-center text-gray-400 text-sm">Carregando...</p>}
+          {!isLoading && (!repasses || repasses.length === 0) && <p className="px-4 py-8 text-center text-gray-400 text-sm">Nenhum repasse encontrado</p>}
+          {(repasses ?? []).map(r => {
+            const isSel = selecionados.has(r.id)
+            const valAlterado = Number(r.valor_repasse) !== Number(r.valor_original)
+            return (
+              <div key={r.id} className={`p-4 space-y-3 ${isSel ? 'bg-blue-50' : ''}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input type="checkbox" checked={isSel} disabled={r.status === 'conciliado'} onChange={() => toggleSelecionado(r.id)} className="rounded border-gray-300 text-[#1F3864] disabled:opacity-30 shrink-0" />
+                    <span className="font-semibold text-gray-900 truncate">{r.lancamentos?.paciente ?? '—'}</span>
+                  </div>
+                  <StatusBadge status={r.status} />
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                  {r.lancamentos?.parceria_id && <Badge variant={r.lancamentos.parceria_id as 'A'|'B'|'C'}>Parceria {r.lancamentos.parceria_id}</Badge>}
+                  {r.lancamentos?.data_atendimento && <span>Atend. {fmt.data(r.lancamentos.data_atendimento)}</span>}
+                  {r.lancamentos?.data_pagamento && <span>Pago {fmt.data(r.lancamentos.data_pagamento)}</span>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-gray-400">Valor original</p>
+                    <p className="font-medium">{fmt.moeda(Number(r.valor_original))}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Valor repasse</p>
+                    <p className={`font-bold ${valAlterado ? 'text-orange-600' : ''}`}>
+                      {fmt.moeda(Number(r.valor_repasse))}{valAlterado && ' ✎'}
+                    </p>
+                  </div>
+                  {r.data_repasse && (
+                    <div>
+                      <p className="text-xs text-gray-400">Data repasse</p>
+                      <p className="font-medium">{fmt.data(r.data_repasse)}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 flex-wrap pt-1">
+                  {r.status === 'nao_conciliado' && (
+                    <button onClick={() => { setDataRepasse(new Date().toISOString().split('T')[0]); setModalConciliar(r) }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircle size={13} /> Conciliar
+                    </button>
+                  )}
+                  {r.status === 'conciliado' && (
+                    <button onClick={() => { setMotivoDesc(''); setModalDesconciliar(r) }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <XCircle size={13} /> Desfazer
+                    </button>
+                  )}
+                  <button onClick={() => handleAbrirEditar(r)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg">
+                    <Pencil size={13} /> Editar valor
+                  </button>
+                  <button onClick={() => setModalLog(r.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg">
+                    <History size={13} /> Histórico
+                  </button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </Card>
 

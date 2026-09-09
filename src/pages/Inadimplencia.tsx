@@ -202,7 +202,8 @@ export default function Inadimplencia() {
 
       {/* Tabela agrupada */}
       <Card>
-        <div className="overflow-x-auto">
+        {/* Versão desktop */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
@@ -216,14 +217,8 @@ export default function Inadimplencia() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {isLoading && (
-                <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
-              )}
-              {!isLoading && grupos.length === 0 && (
-                <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">
-                  Nenhuma parcela vencida encontrada
-                </td></tr>
-              )}
+              {isLoading && <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>}
+              {!isLoading && grupos.length === 0 && <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Nenhuma parcela vencida encontrada</td></tr>}
               {grupos.map(g => {
                 const chave = `${g.paciente}|${g.parceriaId}`
                 const aberto = expandido.has(chave)
@@ -231,33 +226,20 @@ export default function Inadimplencia() {
                 const style  = GRAVIDADE_STYLE[grav]
                 return (
                   <>
-                    <tr key={chave} className={`hover:bg-gray-50 cursor-pointer ${style.row}`}
-                      onClick={() => toggleExpandido(chave)}>
-                      <td className="px-4 py-3 text-gray-400">
-                        {aberto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      </td>
+                    <tr key={chave} className={`hover:bg-gray-50 cursor-pointer ${style.row}`} onClick={() => toggleExpandido(chave)}>
+                      <td className="px-4 py-3 text-gray-400">{aberto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{g.paciente}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={g.parceriaId as ParceriaId}>Parceria {g.parceriaId}</Badge>
-                      </td>
+                      <td className="px-4 py-3"><Badge variant={g.parceriaId as ParceriaId}>Parceria {g.parceriaId}</Badge></td>
                       <td className="px-4 py-3 text-gray-600">{g.parcelas.length} parcela(s)</td>
                       <td className="px-4 py-3 font-bold text-red-700">{fmt.moeda(g.valor_total)}</td>
                       <td className="px-4 py-3 font-semibold text-gray-800">{g.dias_max}d</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${style.badge}`}>
-                          {grav === 'baixo' ? 'Baixo' : grav === 'medio' ? 'Médio' : grav === 'alto' ? 'Alto' : 'Crítico'}
-                        </span>
-                      </td>
+                      <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${style.badge}`}>{grav === 'baixo' ? 'Baixo' : grav === 'medio' ? 'Médio' : grav === 'alto' ? 'Alto' : 'Crítico'}</span></td>
                     </tr>
                     {aberto && g.parcelas.map(p => (
                       <tr key={p.id} className="bg-gray-50/70">
                         <td className="px-4 py-2" />
-                        <td colSpan={2} className="px-4 py-2 text-xs text-gray-500 pl-8">
-                          Parcela {p.parcela_num}/{p.parcela_total}
-                        </td>
-                        <td className="px-4 py-2 text-xs text-gray-500">
-                          Venc. {fmt.data(p.data_vencimento)}
-                        </td>
+                        <td colSpan={2} className="px-4 py-2 text-xs text-gray-500 pl-8">Parcela {p.parcela_num}/{p.parcela_total}</td>
+                        <td className="px-4 py-2 text-xs text-gray-500">Venc. {fmt.data(p.data_vencimento)}</td>
                         <td className="px-4 py-2 text-xs font-medium">{fmt.moeda(p.valor_parcela)}</td>
                         <td className="px-4 py-2 text-xs text-red-600">{p.dias_atraso}d de atraso</td>
                         <td />
@@ -268,6 +250,59 @@ export default function Inadimplencia() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Versão mobile — cards */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {isLoading && <p className="px-4 py-8 text-center text-gray-400 text-sm">Carregando...</p>}
+          {!isLoading && grupos.length === 0 && <p className="px-4 py-8 text-center text-gray-400 text-sm">Nenhuma parcela vencida encontrada</p>}
+          {grupos.map(g => {
+            const chave = `${g.paciente}|${g.parceriaId}`
+            const aberto = expandido.has(chave)
+            const grav   = gravidade(g.dias_max)
+            const style  = GRAVIDADE_STYLE[grav]
+            return (
+              <div key={chave} className={`${style.row}`}>
+                <button
+                  className="w-full p-4 text-left space-y-2"
+                  onClick={() => toggleExpandido(chave)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-gray-900">{g.paciente}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${style.badge}`}>
+                      {grav === 'baixo' ? 'Baixo' : grav === 'medio' ? 'Médio' : grav === 'alto' ? 'Alto' : 'Crítico'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={g.parceriaId as ParceriaId}>Parceria {g.parceriaId}</Badge>
+                    <span className="text-xs text-gray-500">{g.parcelas.length} parcela(s)</span>
+                    <span className="text-xs text-gray-500">{g.dias_max}d de atraso</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-red-700 text-lg">{fmt.moeda(g.valor_total)}</span>
+                    <span className="text-gray-400">{aberto ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
+                  </div>
+                </button>
+
+                {aberto && (
+                  <div className="border-t border-gray-100 divide-y divide-gray-100 bg-gray-50/60">
+                    {g.parcelas.map(p => (
+                      <div key={p.id} className="px-4 py-3 flex items-center justify-between text-sm">
+                        <div>
+                          <p className="text-xs text-gray-500">Parcela {p.parcela_num}/{p.parcela_total}</p>
+                          <p className="text-xs text-gray-400">Venc. {fmt.data(p.data_vencimento)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{fmt.moeda(p.valor_parcela)}</p>
+                          <p className="text-xs text-red-600">{p.dias_atraso}d de atraso</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </Card>
     </div>
