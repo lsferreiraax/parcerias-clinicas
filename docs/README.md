@@ -4,6 +4,16 @@
 
 ---
 
+## Backlog e Planejamento
+
+| Documento | Descrição |
+|-----------|-----------|
+| [backlog.md](backlog.md) | Backlog consolidado com todos os itens planejados, priorizados e estimados |
+| [planejamento-melhorias.md](planejamento-melhorias.md) | Detalhamento técnico dos blocos de melhoria (histórico) |
+| [estorias-de-negocio.md](estorias-de-negocio.md) | 24 user stories com critérios de aceitação |
+
+---
+
 ## Scripts & Banco de Dados
 
 | Documento | Descrição |
