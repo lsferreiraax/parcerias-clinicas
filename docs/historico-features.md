@@ -191,6 +191,42 @@ Adicionalmente, a Parceria C foi editada via UI com valores fracionários (0.4 /
 
 ---
 
+## Fase 13 — Busca por Paciente em Lançamentos
+
+### Campo de busca na barra de filtros
+- Input com ícone de lupa adicionado à barra de filtros de Lançamentos
+- Filtragem client-side instantânea (case-insensitive) sobre o array já carregado
+- Não gera nova requisição ao banco — consistente com os demais filtros do projeto
+- **Arquivo:** `src/pages/Lancamentos.tsx`
+
+---
+
+## Fase 14 — Responsividade Mobile (M1, M2, M3)
+
+### M1 — Sidebar responsiva com drawer
+- Em desktop (`md+`): sidebar fixa de 256px mantida
+- Em mobile (`< md`): sidebar oculta; botão hambúrguer no header abre drawer deslizante de 288px
+- Overlay escuro fecha o drawer ao toque; navegação também fecha automaticamente
+- Scroll do body bloqueado enquanto o drawer está aberto
+- **Arquivo:** `src/components/layout/Layout.tsx`
+
+### M2 — Padding e layout adaptativo
+- Conteúdo principal: `p-4 md:p-8` (era `p-8` fixo)
+- Header: `px-4 md:px-8` e `py-3 md:py-4`
+- Barras de filtro: `px-4 md:px-6` em todas as páginas de tabela
+- Formulários de lançamento: `grid-cols-1 sm:grid-cols-2` (eram `grid-cols-2` fixo)
+- **Arquivos:** `Layout.tsx`, `Lancamentos.tsx`, `Parcelas.tsx`, `Repasses.tsx`, `Inadimplencia.tsx`
+
+### M3 — Versão card para tabelas em mobile
+- Todas as tabelas com muitas colunas ganham versão card em mobile (`md:hidden`), mantendo a tabela em desktop (`hidden md:block`)
+- **Lançamentos:** card com status, badges de parceria/forma/meio, valor em destaque, rateio em grid 4 colunas, botões rotulados
+- **Parcelas:** checkbox de seleção, grid 3 colunas (parcela/vencimento/valor), rateio colapsado, botões Baixar/Renegociar/Histórico
+- **Repasses:** checkbox, valores original vs repasse com indicador ✎ de edição, botões Conciliar/Desfazer/Editar/Histórico
+- **Inadimplência:** card expansível ao toque (expande lista de parcelas), badge de gravidade, valor em aberto em destaque
+- **Arquivos:** `Lancamentos.tsx`, `Parcelas.tsx`, `Repasses.tsx`, `Inadimplencia.tsx`
+
+---
+
 ## Limitações conhecidas do Supabase PostgREST
 
 > **Importante para desenvolvimento futuro:**

@@ -340,3 +340,7 @@ Não há um painel centralizado mostrando todas as parcelas renegociadas. A info
 | 2026-09-08 | Detecção de duplicata (US-19)                  | 5     |
 | 2026-09-08 | Validação de integridade do rateio (US-20)     | 5     |
 | 2026-09-08 | Bug fix: percentuais de rateio ÷ 100 (014)    | —     |
+| 2026-09-08 | Busca por paciente em Lançamentos              | —     |
+| 2026-09-08 | M1 — Sidebar responsiva com drawer mobile      | M     |
+| 2026-09-08 | M2 — Padding adaptativo e formulários mobile   | M     |
+| 2026-09-08 | M3 — Versão card para tabelas em mobile        | M     |

@@ -58,6 +58,10 @@
 | 08/09/2026 | **Detecção de duplicata (US-19):** alerta amarelo ao cadastrar lançamento similar ao existente |
 | 08/09/2026 | **Validação de rateio (US-20):** badge de inconsistência quando rateio não fecha com valor total |
 | 08/09/2026 | **Bug fix — rateio 100× (migration 014):** corrigido cálculo que multiplicava percentual inteiro sem ÷ 100; dados de lancamentos, parcelas e repasses recalculados |
+| 08/09/2026 | **Busca por paciente em Lançamentos:** campo de busca com ícone de lupa, filtragem client-side instantânea |
+| 08/09/2026 | **M1 — Sidebar responsiva:** botão hambúrguer + drawer deslizante em mobile, overlay com fecho automático na navegação |
+| 08/09/2026 | **M2 — Layout adaptativo:** padding `p-4 md:p-8`, formulários `sm:grid-cols-2`, barras de filtro responsivas |
+| 08/09/2026 | **M3 — Tabelas mobile:** versão card para Lançamentos, Parcelas, Repasses e Inadimplência (abaixo de 768px) |
 
 ---
 
