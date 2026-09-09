@@ -1,22 +1,26 @@
 import { useState } from 'react'
-import { CheckCircle, AlertCircle, CheckSquare, History, RefreshCw } from 'lucide-react'
+import { CheckCircle, AlertCircle, CheckSquare, History, RefreshCw, FileDown, RefreshCcw } from 'lucide-react'
 import { Card, Badge, KpiCard, FiltroData } from '@/components/ui'
-import { useParcelas, useMarcarParcelaPaga, useBaixarEmLote } from '@/hooks/useResumo'
+import { useParcelas, useMarcarParcelaPaga, useBaixarEmLote, useRenegociadas } from '@/hooks/useResumo'
 import { usePerfil } from '@/contexts/PerfilContext'
 import BaixaEmLote from '@/components/parcelas/BaixaEmLote'
 import HistoricoParcela from '@/components/parcelas/HistoricoParcela'
 import RenegociarParcela from '@/components/parcelas/RenegociarParcela'
+import { gerarRelatorioRenegociacoes } from '@/services/relatorio'
 import { fmt } from '@/lib/utils'
 import type { ParceriaId } from '@/types'
 
 export default function Parcelas() {
-  const { isAdmin, isGestor } = usePerfil()
+  const { isAdmin, isGestor, perfil } = usePerfil()
   const podeGerenciar = isAdmin || isGestor
+  const usuarioNome   = perfil?.nome ?? 'Usuário'
 
+  const [aba, setAba]                     = useState<'parcelas' | 'renegociadas'>('parcelas')
   const [filtroStatus, setFiltroStatus]   = useState('')
   const [filtroPaciente, setFiltroPaciente] = useState('')
   const [dataInicio, setDataInicio]       = useState('')
   const [dataFim, setDataFim]             = useState('')
+  const [gerandoPdf, setGerandoPdf]       = useState(false)
 
   // Seleção em lote
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
@@ -35,6 +39,7 @@ export default function Parcelas() {
     ...(dataFim        ? { dataFim }                  : {}),
   }
   const { data: parcelas, isLoading } = useParcelas(Object.keys(filtros).length ? filtros : undefined)
+  const { data: renegociadas, isLoading: loadingReneg } = useRenegociadas()
   const marcarPaga  = useMarcarParcelaPaga()
   const baixarLote  = useBaixarEmLote()
 
@@ -80,28 +85,69 @@ export default function Parcelas() {
     return <Badge variant="warning">pendente</Badge>
   }
 
+  const handleExportarReneg = async () => {
+    if (!renegociadas?.length) return
+    setGerandoPdf(true)
+    try { await gerarRelatorioRenegociacoes(renegociadas, usuarioNome) }
+    finally { setGerandoPdf(false) }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#1F3864]">Controle de Parcelas</h1>
           <p className="text-gray-500 text-sm mt-1">Acompanhe e baixe parcelas dos atendimentos parcelados</p>
         </div>
-        {podeGerenciar && selecionados.size > 0 && (
-          <button
-            onClick={() => setModalLote(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
-          >
-            <CheckSquare size={16} />
-            Baixar {selecionados.size} selecionada(s)
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {aba === 'renegociadas' && podeGerenciar && (
+            <button
+              onClick={handleExportarReneg}
+              disabled={gerandoPdf || !renegociadas?.length}
+              className="flex items-center gap-2 px-4 py-2 bg-[#1F3864] text-white text-sm font-medium rounded-lg hover:bg-[#2E75B6] disabled:opacity-50"
+            >
+              <FileDown size={16} />
+              {gerandoPdf ? 'Gerando...' : 'Exportar PDF'}
+            </button>
+          )}
+          {aba === 'parcelas' && podeGerenciar && selecionados.size > 0 && (
+            <button
+              onClick={() => setModalLote(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+            >
+              <CheckSquare size={16} />
+              Baixar {selecionados.size} selecionada(s)
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <KpiCard label="Pendentes" value={pendentes.length} color="border-l-yellow-400" />
-        <KpiCard label="Vencidas"  value={vencidas.length}  color="border-l-red-500" />
-        <KpiCard label="Pagas"     value={pagas.length}     color="border-l-green-500" />
+      <div className="grid grid-cols-4 gap-4">
+        <KpiCard label="Pendentes"    value={pendentes.length}          color="border-l-yellow-400" />
+        <KpiCard label="Vencidas"     value={vencidas.length}           color="border-l-red-500" />
+        <KpiCard label="Pagas"        value={pagas.length}              color="border-l-green-500" />
+        <KpiCard label="Renegociadas" value={renegociadas?.length ?? '—'} color="border-l-amber-500" />
+      </div>
+
+      {/* Abas */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setAba('parcelas')}
+          className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+            aba === 'parcelas' ? 'bg-[#1F3864] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Parcelas
+        </button>
+        <button
+          onClick={() => setAba('renegociadas')}
+          className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+            aba === 'renegociadas' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <RefreshCcw size={14} />
+          Renegociadas {renegociadas?.length ? `(${renegociadas.length})` : ''}
+        </button>
       </div>
 
       {vencidas.length > 0 && (
@@ -111,6 +157,80 @@ export default function Parcelas() {
         </div>
       )}
 
+      {/* Painel de renegociações */}
+      {aba === 'renegociadas' && (
+        <Card>
+          {/* Versão desktop */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-amber-50 text-amber-700 text-xs uppercase">
+                <tr>
+                  {['Paciente', 'Parceria', 'Parcela', 'Novo Vencimento', 'Valor', 'Data Renegociação', 'Motivo'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-50">
+                {loadingReneg && <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>}
+                {!loadingReneg && !renegociadas?.length && <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Nenhuma parcela renegociada</td></tr>}
+                {(renegociadas ?? []).map(p => (
+                  <tr key={p.id} className="hover:bg-amber-50/40">
+                    <td className="px-4 py-3 font-medium">{p.paciente}</td>
+                    <td className="px-4 py-3"><Badge variant={p.parceria_id as ParceriaId}>Parceria {p.parceria_id}</Badge></td>
+                    <td className="px-4 py-3">{p.parcela_num}/{p.parcela_total}</td>
+                    <td className="px-4 py-3">{fmt.data(p.data_vencimento)}</td>
+                    <td className="px-4 py-3 font-semibold">{fmt.moeda(p.valor_parcela)}</td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {p.data_renegociacao ? new Date(p.data_renegociacao).toLocaleDateString('pt-BR') : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={p.observacoes ?? ''}>
+                      {p.observacoes ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Versão mobile — cards */}
+          <div className="md:hidden divide-y divide-amber-50">
+            {loadingReneg && <p className="px-4 py-8 text-center text-gray-400 text-sm">Carregando...</p>}
+            {!loadingReneg && !renegociadas?.length && <p className="px-4 py-8 text-center text-gray-400 text-sm">Nenhuma parcela renegociada</p>}
+            {(renegociadas ?? []).map(p => (
+              <div key={p.id} className="p-4 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-gray-900">{p.paciente}</span>
+                  <Badge variant={p.parceria_id as ParceriaId}>Parceria {p.parceria_id}</Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-gray-400">Parcela</p>
+                    <p className="font-medium">{p.parcela_num}/{p.parcela_total}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Novo vencimento</p>
+                    <p className="font-medium">{fmt.data(p.data_vencimento)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Valor</p>
+                    <p className="font-bold">{fmt.moeda(p.valor_parcela)}</p>
+                  </div>
+                </div>
+                {p.data_renegociacao && (
+                  <p className="text-xs text-gray-400">
+                    Renegociada em {new Date(p.data_renegociacao).toLocaleDateString('pt-BR')}
+                  </p>
+                )}
+                {p.observacoes && (
+                  <p className="text-xs text-gray-600 italic bg-amber-50 rounded px-2 py-1">"{p.observacoes}"</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {aba === 'parcelas' && <>
       <Card>
         <div className="px-4 md:px-6 py-4 flex gap-3 flex-wrap items-center">
           <input
@@ -278,6 +398,8 @@ export default function Parcelas() {
           })}
         </div>
       </Card>
+
+      </>}
 
       {/* Modais */}
       {modalLote && (

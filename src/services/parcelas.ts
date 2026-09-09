@@ -76,6 +76,54 @@ export async function buscarHistorico(parcelaId: string): Promise<ParcelaLog[]> 
   return data as ParcelaLog[]
 }
 
+export interface ParcelaRenegociada {
+  id: string
+  parcela_num: number
+  parcela_total: number
+  data_vencimento: string
+  valor_parcela: number
+  observacoes: string | null
+  data_renegociacao: string | null
+  paciente: string
+  parceria_id: string
+}
+
+export async function listarRenegociadas(): Promise<ParcelaRenegociada[]> {
+  const [{ data: parcelas, error: e1 }, { data: logs, error: e2 }] = await Promise.all([
+    supabase
+      .from('parcelas')
+      .select('id, parcela_num, parcela_total, data_vencimento, valor_parcela, observacoes, lancamentos(paciente, parceria_id)')
+      .eq('status', 'renegociada')
+      .order('data_vencimento', { ascending: false }),
+    supabase
+      .from('parcelas_log')
+      .select('parcela_id, alterado_em')
+      .eq('campo_alterado', 'status')
+      .eq('valor_novo', 'renegociada')
+      .order('alterado_em', { ascending: false }),
+  ])
+  if (e1) throw e1
+  if (e2) throw e2
+
+  // Mapa parcela_id → data mais recente de renegociação
+  const dataMap = new Map<string, string>()
+  for (const log of logs ?? []) {
+    if (!dataMap.has(log.parcela_id)) dataMap.set(log.parcela_id, log.alterado_em)
+  }
+
+  return (parcelas ?? []).map(p => ({
+    id:                p.id,
+    parcela_num:       p.parcela_num,
+    parcela_total:     p.parcela_total,
+    data_vencimento:   p.data_vencimento,
+    valor_parcela:     Number(p.valor_parcela),
+    observacoes:       p.observacoes ?? null,
+    data_renegociacao: dataMap.get(p.id) ?? null,
+    paciente:          (p.lancamentos as any)?.paciente ?? '—',
+    parceria_id:       (p.lancamentos as any)?.parceria_id ?? '—',
+  }))
+}
+
 export async function contarParcelasAlerta(): Promise<number> {
   const hoje  = new Date().toISOString().split('T')[0]
   const amanha = new Date(Date.now() + 86_400_000).toISOString().split('T')[0]

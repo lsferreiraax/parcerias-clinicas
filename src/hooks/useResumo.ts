@@ -4,6 +4,7 @@ import type { FiltroResumo } from '@/services/resumo'
 import {
   listarParcelas, marcarParcelaPaga, atualizarStatusParcela,
   baixarEmLote, renegociarParcela, buscarHistorico, contarParcelasAlerta,
+  listarRenegociadas,
 } from '@/services/parcelas'
 
 export function useResumoParceria(filtro?: FiltroResumo) {
@@ -22,6 +23,13 @@ export function useParcelas(filtros?: Parameters<typeof listarParcelas>[0]) {
   return useQuery({
     queryKey: ['parcelas', filtros],
     queryFn: () => listarParcelas(filtros),
+  })
+}
+
+export function useRenegociadas() {
+  return useQuery({
+    queryKey: ['renegociadas'],
+    queryFn: listarRenegociadas,
   })
 }
 

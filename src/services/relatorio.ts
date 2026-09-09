@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import { fmt } from '@/lib/utils'
 import type { Repasse, TipoRepasse } from '@/types'
+import type { ParcelaRenegociada } from '@/services/parcelas'
 
 const TIPO_LABEL: Record<TipoRepasse, string> = {
   camta: 'Repasse Camta',
@@ -492,6 +493,43 @@ export function exportarRepassesMensalExcel(repasses: any[], mes: string) {
   }
 
   XLSX.writeFile(wb, `repasses_mensais_${mes.replace(/\s/g, '_')}.xlsx`)
+}
+
+// ─── 7. Relatório de Renegociações ───────────────────────────────────────────
+
+export async function gerarRelatorioRenegociacoes(
+  renegociadas: ParcelaRenegociada[],
+  usuarioNome: string
+) {
+  const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const logo   = await logoBase64()
+  const startY = cabecalho(doc, logo, 'Relatório de Renegociações', `${renegociadas.length} parcela(s) renegociada(s)`)
+
+  const totalValor = renegociadas.reduce((s, p) => s + p.valor_parcela, 0)
+
+  autoTable(doc, {
+    startY,
+    head: [['Paciente', 'Parceria', 'Parcela', 'Novo Vencimento', 'Valor', 'Data Renegociação', 'Motivo']],
+    body: renegociadas.map(p => [
+      p.paciente,
+      `Parceria ${p.parceria_id}`,
+      `${p.parcela_num}/${p.parcela_total}`,
+      fmt.data(p.data_vencimento),
+      fmt.moeda(p.valor_parcela),
+      p.data_renegociacao ? new Date(p.data_renegociacao).toLocaleDateString('pt-BR') : '—',
+      p.observacoes ?? '—',
+    ]),
+    foot: [['', '', '', 'TOTAL', fmt.moeda(totalValor), `${renegociadas.length} parcelas`, '']],
+    headStyles:   { fillColor: [180, 120, 0] as [number,number,number], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+    footStyles:   { fillColor: COR_SECUNDARIA as [number,number,number], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+    bodyStyles:   { fontSize: 7.5 },
+    alternateRowStyles: { fillColor: [255, 251, 235] },
+    columnStyles: { 6: { cellWidth: 55 } },
+    margin: { bottom: 20 },
+  })
+
+  rodape(doc, usuarioNome)
+  doc.save(`renegociacoes_${new Date().toISOString().slice(0, 10)}.pdf`)
 }
 
 // ─── 7. Comprovante de Repasse (PDF individual por lançamento) ───────────────
