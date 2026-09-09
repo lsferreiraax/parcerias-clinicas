@@ -23,7 +23,7 @@ Atualizado em: 2026-09-08
 |---|------|-----------|---------|--------|
 | M1 | Sidebar responsiva (hambúrguer/drawer) | 🔴 | ~10k | ✅ |
 | M2 | Padding e layout adaptativo mobile | 🔴 | ~3k | ✅ |
-| 6.2 | Comprovante de repasse em PDF | 🟡 | ~8k | 📋 |
+| 6.2 | Comprovante de repasse em PDF | 🟡 | ~8k | ✅ |
 | 4.2 | Alerta de parcelas vencidas por e-mail | 🟡 | ~10k | 📋 |
 | 4.1 | Notificação por e-mail ao conciliar repasse | 🟡 | ~15k | 📋 |
 | M3 | Tabelas mobile — versão card / scroll explícito | 🟡 | ~15k | ✅ |
@@ -251,3 +251,4 @@ Não há painel centralizado mostrando parcelas renegociadas. A informação est
 | 2026-09-08 | M1 — Sidebar responsiva com drawer mobile | M |
 | 2026-09-08 | M2 — Padding adaptativo e formulários mobile | M |
 | 2026-09-08 | M3 — Versão card para tabelas em mobile | M |
+| 2026-09-09 | Comprovante de repasse em PDF (6.2) | 6 |
