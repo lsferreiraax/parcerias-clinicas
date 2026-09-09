@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode, AlertTriangle, XCircle, History, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode, AlertTriangle, XCircle, History, AlertCircle, Search } from 'lucide-react'
 import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/components/ui'
 import {
   useLancamentos, useCriarLancamento, useAtualizarStatusLancamento,
@@ -188,6 +188,7 @@ export default function Lancamentos() {
   const [modalLog, setModalLog]                   = useState<Lancamento | null>(null)
   const [lancamentoEditando, setLancamentoEditando] = useState<Lancamento | null>(null)
   const [filtros, setFiltros]                     = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
+  const [buscaPaciente, setBuscaPaciente]         = useState('')
   const [form, setForm]                           = useState(INIT)
   const [selecionados, setSelecionados]           = useState<Set<string>>(new Set())
   const [motivoExclusao, setMotivoExclusao]       = useState('')
@@ -203,7 +204,11 @@ export default function Lancamentos() {
     observacoes: '',
   })
 
-  const { data: lancamentos, isLoading } = useLancamentos(filtros)
+  const { data: lancamentosRaw, isLoading } = useLancamentos(filtros)
+  const busca = buscaPaciente.trim().toLowerCase()
+  const lancamentos = busca
+    ? (lancamentosRaw ?? []).filter(l => l.paciente.toLowerCase().includes(busca))
+    : lancamentosRaw
   const { data: duplicata } = useVerificarDuplicata(form.paciente, form.data_atendimento, form.parceria_id)
 
   const criar          = useCriarLancamento()
@@ -327,6 +332,16 @@ export default function Lancamentos() {
 
       <Card>
         <div className="px-6 py-4 flex gap-4 flex-wrap items-center">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar paciente..."
+              value={buscaPaciente}
+              onChange={e => setBuscaPaciente(e.target.value)}
+              className="rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-[#1F3864]"
+            />
+          </div>
           <select
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
             onChange={e => setFiltros(f => ({ ...f, parceria: e.target.value || undefined }))}>
