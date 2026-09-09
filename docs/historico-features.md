@@ -227,6 +227,20 @@ Adicionalmente, a Parceria C foi editada via UI com valores fracionários (0.4 /
 
 ---
 
+## Fase 16 — Gráfico de Evolução Mensal no Extrato (6.1)
+
+### LineChart dos últimos 12 meses por profissional
+- Exibido entre os KPIs e a tabela na tela de Extrato, visível quando há ao menos um mês com dados
+- Cor da linha acompanha o profissional selecionado (azul/verde/amarelo/laranja)
+- Linha tracejada cinza marca a média mensal; tooltip formata valores em BRL
+- KPIs extras no cabeçalho do card: **Média mensal** e **Melhor mês**
+- Meses sem atendimentos aparecem com valor zero, mantendo a continuidade visual da série
+- **`src/services/extrato.ts`:** nova função `getExtratoMensal()` — busca, agrupa por `YYYY-MM` e preenche os 12 meses
+- **`src/hooks/useExtrato.ts`:** novo hook `useExtratoMensal()` com staleTime de 5 min
+- **`src/pages/Extrato.tsx`:** componente LineChart (Recharts) responsivo, altura 220px
+
+---
+
 ## Fase 15 — Comprovante de Repasse em PDF (6.2)
 
 ### Geração de comprovante individual por lançamento

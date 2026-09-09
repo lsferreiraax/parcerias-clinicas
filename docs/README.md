@@ -62,6 +62,7 @@
 | 08/09/2026 | **M1 — Sidebar responsiva:** botão hambúrguer + drawer deslizante em mobile, overlay com fecho automático na navegação |
 | 08/09/2026 | **M2 — Layout adaptativo:** padding `p-4 md:p-8`, formulários `sm:grid-cols-2`, barras de filtro responsivas |
 | 08/09/2026 | **M3 — Tabelas mobile:** versão card para Lançamentos, Parcelas, Repasses e Inadimplência (abaixo de 768px) |
+| 09/09/2026 | **Gráfico de evolução mensal no Extrato (6.1):** LineChart Recharts com média, melhor mês e cor por profissional |
 | 09/09/2026 | **Comprovante de repasse em PDF (6.2):** botão por linha no Extrato; PDF com dados do atendimento e valores em destaque |
 
 ---
