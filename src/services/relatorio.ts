@@ -494,6 +494,107 @@ export function exportarRepassesMensalExcel(repasses: any[], mes: string) {
   XLSX.writeFile(wb, `repasses_mensais_${mes.replace(/\s/g, '_')}.xlsx`)
 }
 
+// ─── 7. Comprovante de Repasse (PDF individual por lançamento) ───────────────
+
+const TIPO_LABEL_PROF: Record<string, string> = {
+  camta: 'Camta',
+  medico: 'Médico',
+  psi1: 'Psi 1',
+  psi2: 'Psi 2',
+}
+
+export interface LinhaExtratoParaComprovante {
+  id: string
+  data_atendimento: string
+  paciente: string
+  parceria_id: string
+  forma_pagamento: string
+  valor_total: number
+  valor_profissional: number
+  status: string
+}
+
+export async function gerarComprovante(
+  linha: LinhaExtratoParaComprovante,
+  profissional: string,
+  usuarioNome: string
+) {
+  const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const logo   = await logoBase64()
+  const largura = doc.internal.pageSize.getWidth()
+
+  const profLabel = TIPO_LABEL_PROF[profissional] ?? profissional
+  const startY  = cabecalho(doc, logo, 'Comprovante de Repasse', profLabel)
+
+  // Caixa de informações do atendimento
+  const boxX = 14, boxW = largura - 28, boxY = startY + 4
+  doc.setFillColor(245, 247, 252)
+  doc.setDrawColor(200, 210, 230)
+  doc.roundedRect(boxX, boxY, boxW, 52, 3, 3, 'FD')
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...COR_PRIMARIA as [number, number, number])
+  doc.text('DADOS DO ATENDIMENTO', boxX + 6, boxY + 8)
+  doc.setTextColor(60, 60, 60)
+  doc.setFont('helvetica', 'normal')
+
+  const campo = (label: string, valor: string, x: number, y: number) => {
+    doc.setFontSize(7.5)
+    doc.setFont('helvetica', 'bold')
+    doc.text(label, x, y)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.text(valor, x, y + 5)
+  }
+
+  const col1 = boxX + 6, col2 = col1 + 70, col3 = col2 + 60
+  campo('Paciente',        linha.paciente,                                    col1, boxY + 18)
+  campo('Data Atendimento', fmt.data(linha.data_atendimento),                 col2, boxY + 18)
+  campo('Parceria',        `Parceria ${linha.parceria_id}`,                   col3, boxY + 18)
+  campo('Forma Pagamento', linha.forma_pagamento === 'avista' ? 'À Vista' : 'Parcelado', col1, boxY + 34)
+  campo('Status',          linha.status.charAt(0).toUpperCase() + linha.status.slice(1), col2, boxY + 34)
+  campo('Profissional',    profLabel,                                         col3, boxY + 34)
+
+  // Destaque dos valores
+  const valBoxY = boxY + 60
+  const metade  = (boxW - 8) / 2
+
+  // Valor total
+  doc.setFillColor(...COR_PRIMARIA as [number, number, number])
+  doc.roundedRect(boxX, valBoxY, metade, 28, 3, 3, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Valor Total do Atendimento', boxX + metade / 2, valBoxY + 9, { align: 'center' })
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text(fmt.moeda(linha.valor_total), boxX + metade / 2, valBoxY + 21, { align: 'center' })
+
+  // Valor do repasse
+  doc.setFillColor(...COR_SECUNDARIA as [number, number, number])
+  doc.roundedRect(boxX + metade + 8, valBoxY, metade, 28, 3, 3, 'F')
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Valor do Repasse — ${profLabel}`, boxX + metade + 8 + metade / 2, valBoxY + 9, { align: 'center' })
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text(fmt.moeda(linha.valor_profissional), boxX + metade + 8 + metade / 2, valBoxY + 21, { align: 'center' })
+
+  doc.setTextColor(0, 0, 0)
+
+  // Número de referência
+  const refY = valBoxY + 36
+  doc.setFontSize(7.5)
+  doc.setFont('helvetica', 'italic')
+  doc.setTextColor(150, 150, 150)
+  doc.text(`Referência: ${linha.id}`, boxX, refY)
+
+  rodape(doc, usuarioNome)
+  const pacienteSlug = linha.paciente.replace(/\s+/g, '_').toLowerCase().slice(0, 20)
+  doc.save(`comprovante_${profissional}_${pacienteSlug}_${linha.data_atendimento}.pdf`)
+}
+
 // ─── 8. Relatório de Repasse individual (PDF) ───────────────────────────────
 
 export function exportarRepasseExcel(repasses: Repasse[], tipo: TipoRepasse) {

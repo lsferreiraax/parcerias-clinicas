@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { FileDown } from 'lucide-react'
+import { FileDown, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { Card, CardHeader, CardBody, Badge, Button, FiltroData, KpiCard } from '@/components/ui'
 import { useExtrato } from '@/hooks/useExtrato'
 import { usePerfil } from '@/contexts/PerfilContext'
 import { fmt } from '@/lib/utils'
+import { gerarComprovante } from '@/services/relatorio'
 import type { TipoProfissional } from '@/services/extrato'
 import type { ParceriaId } from '@/types'
 
@@ -40,6 +41,7 @@ export default function Extrato() {
   const pagas = (linhas ?? []).filter(l => l.status === 'pago').reduce((s, l) => s + l.valor_profissional, 0)
 
   const profLabel = PROFISSIONAIS.find(p => p.value === profissional)?.label ?? profissional
+  const usuarioNome = perfil?.nome ?? 'Usuário'
 
   const exportar = () => {
     const rows = (linhas ?? []).map(l => ({
@@ -125,17 +127,17 @@ export default function Extrato() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                 <tr>
-                  {['Data', 'Paciente', 'Parceria', 'Pagamento', 'Valor Total', profLabel, 'Status'].map(h => (
+                  {['Data', 'Paciente', 'Parceria', 'Pagamento', 'Valor Total', profLabel, 'Status', ''].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {isLoading && (
-                  <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
+                  <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
                 )}
                 {!isLoading && (!linhas || linhas.length === 0) && (
-                  <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
+                  <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
                 )}
                 {(linhas ?? []).map(l => (
                   <tr key={l.id} className="hover:bg-gray-50">
@@ -152,13 +154,23 @@ export default function Extrato() {
                         {l.status}
                       </Badge>
                     </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => gerarComprovante(l, profissional, usuarioNome)}
+                        title="Gerar comprovante PDF"
+                        className="flex items-center gap-1 text-xs text-[#2E75B6] hover:text-[#1F3864] font-medium transition-colors"
+                      >
+                        <FileText size={14} />
+                        Comprovante
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {(linhas ?? []).length > 0 && (
                   <tr className="bg-gray-50 font-semibold">
                     <td colSpan={5} className="px-4 py-3 text-right text-gray-500">Total</td>
                     <td className="px-4 py-3 text-[#1F3864]">{fmt.moeda(total)}</td>
-                    <td />
+                    <td /><td />
                   </tr>
                 )}
               </tbody>
