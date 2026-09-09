@@ -30,7 +30,7 @@ Atualizado em: 2026-09-08
 | 6.1 | Gráfico de evolução no Extrato | 🟢 | ~10k | ✅ |
 | 4.3 | Resumo mensal automático por e-mail | 🟢 | ~12k | 📋 |
 | 5.3 | Importação em lote via Excel | 🟢 | ~25k | 📋 |
-| 6.3 | Painel de renegociações | 🟢 | ~5k | 📋 |
+| 6.3 | Painel de renegociações | 🟢 | ~5k | ✅ |
 
 ---
 
@@ -251,5 +251,6 @@ Não há painel centralizado mostrando parcelas renegociadas. A informação est
 | 2026-09-08 | M1 — Sidebar responsiva com drawer mobile | M |
 | 2026-09-08 | M2 — Padding adaptativo e formulários mobile | M |
 | 2026-09-08 | M3 — Versão card para tabelas em mobile | M |
+| 2026-09-09 | Painel de renegociações (6.3) | 6 |
 | 2026-09-09 | Gráfico de evolução mensal no Extrato (6.1) | 6 |
 | 2026-09-09 | Comprovante de repasse em PDF (6.2) | 6 |

@@ -227,6 +227,21 @@ Adicionalmente, a Parceria C foi editada via UI com valores fracionários (0.4 /
 
 ---
 
+## Fase 17 — Painel de Renegociações (6.3)
+
+### Aba dedicada em Parcelas
+- Nova aba "Renegociadas" com contagem ao lado do label; alterna o conteúdo do card principal sem perder os filtros da aba Parcelas
+- KPI de Renegociadas adicionado ao grid de 4 colunas no topo da página
+- Tabela dedicada desktop: Paciente, Parceria, Parcela, Novo Vencimento, Valor, Data Renegociação, Motivo — visual âmbar
+- Versão card mobile com mesmo conjunto de informações
+- Botão "Exportar PDF" visível apenas na aba Renegociadas (admin/gestor)
+- **`src/services/parcelas.ts`:** `listarRenegociadas()` — busca parcelas `status='renegociada'` + `parcelas_log` em paralelo para obter data exata de renegociação; combina client-side
+- **`src/services/relatorio.ts`:** `gerarRelatorioRenegociacoes()` — PDF A4 portrait com rodapé padrão
+- **`src/hooks/useResumo.ts`:** `useRenegociadas()`
+- **`src/pages/Parcelas.tsx`:** abas + tabela dedicada + exportação
+
+---
+
 ## Fase 16 — Gráfico de Evolução Mensal no Extrato (6.1)
 
 ### LineChart dos últimos 12 meses por profissional

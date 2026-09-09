@@ -290,7 +290,7 @@ O profissional não tem como gerar comprovante do próprio repasse. Precisa pedi
 ---
 
 ### 6.3 Histórico de renegociações
-**Status:** 📋 Planejado  
+**Status:** ✅ Implementado (2026-09-09)  
 **Relevância:** ⭐⭐ | **Tokens est.:** ~5k
 
 **Problema:**
@@ -339,6 +339,7 @@ Não há um painel centralizado mostrando todas as parcelas renegociadas. A info
 | 2026-09-07 | Repasse vinculado à baixa                      | 3     |
 | 2026-09-08 | Detecção de duplicata (US-19)                  | 5     |
 | 2026-09-08 | Validação de integridade do rateio (US-20)     | 5     |
+| 2026-09-09 | Painel de renegociações (6.3)                  | 6     |
 | 2026-09-09 | Gráfico de evolução mensal no Extrato (6.1)    | 6     |
 | 2026-09-09 | Comprovante de repasse em PDF (6.2)            | 6     |
 | 2026-09-08 | Bug fix: percentuais de rateio ÷ 100 (014)    | —     |
