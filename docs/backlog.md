@@ -26,7 +26,7 @@ Atualizado em: 2026-09-08
 | 6.2 | Comprovante de repasse em PDF | 🟡 | ~8k | 📋 |
 | 4.2 | Alerta de parcelas vencidas por e-mail | 🟡 | ~10k | 📋 |
 | 4.1 | Notificação por e-mail ao conciliar repasse | 🟡 | ~15k | 📋 |
-| M3 | Tabelas mobile — versão card / scroll explícito | 🟡 | ~15k | 📋 |
+| M3 | Tabelas mobile — versão card / scroll explícito | 🟡 | ~15k | ✅ |
 | 6.1 | Gráfico de evolução no Extrato | 🟢 | ~10k | 📋 |
 | 4.3 | Resumo mensal automático por e-mail | 🟢 | ~12k | 📋 |
 | 5.3 | Importação em lote via Excel | 🟢 | ~25k | 📋 |
@@ -74,7 +74,7 @@ O conteúdo principal usa `p-8` (32px) fixo. Em tela de 375px resta apenas ~311p
 ---
 
 ### M3 — Tabelas em mobile
-**Status:** 📋 Planejado | **Prioridade:** 🟡 | **Tokens est.:** ~15k
+**Status:** ✅ Implementado (2026-09-08) | **Prioridade:** 🟡 | **Tokens est.:** ~15k
 
 **Problema:**
 Tabelas com 12–14 colunas (Lançamentos, Parcelas, Repasses, Inadimplência) exigem scroll horizontal dentro da tabela em mobile. Difícil de usar com toque.
@@ -250,3 +250,4 @@ Não há painel centralizado mostrando parcelas renegociadas. A informação est
 | 2026-09-08 | Busca por paciente em Lançamentos | — |
 | 2026-09-08 | M1 — Sidebar responsiva com drawer mobile | M |
 | 2026-09-08 | M2 — Padding adaptativo e formulários mobile | M |
+| 2026-09-08 | M3 — Versão card para tabelas em mobile | M |
