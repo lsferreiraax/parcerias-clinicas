@@ -331,7 +331,7 @@ export default function Lancamentos() {
       </div>
 
       <Card>
-        <div className="px-6 py-4 flex gap-4 flex-wrap items-center">
+        <div className="px-4 md:px-6 py-4 flex gap-3 flex-wrap items-center">
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
@@ -563,7 +563,7 @@ export default function Lancamentos() {
       {/* Modal: Novo Lançamento */}
       <Modal open={modal} onClose={() => setModal(false)} title="Novo Lançamento">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Data do Atendimento" type="date"
               value={form.data_atendimento}
@@ -577,7 +577,7 @@ export default function Lancamentos() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Nome do Paciente" placeholder="Nome completo"
               value={form.paciente}
@@ -588,7 +588,7 @@ export default function Lancamentos() {
               onChange={e => setForm(f => ({ ...f, nome_responsavel: e.target.value }))} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Forma de Pagamento" value={form.forma_pagamento}
               onChange={e => setForm(f => ({
@@ -607,7 +607,7 @@ export default function Lancamentos() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Valor Total (R$)" type="number" min={0} step={0.01} placeholder="0,00"
               value={form.valor_total || ''}
@@ -680,7 +680,7 @@ export default function Lancamentos() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Data do Atendimento" type="date"
               value={formEdicao.data_atendimento}
@@ -694,7 +694,7 @@ export default function Lancamentos() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Nome do Paciente" placeholder="Nome completo"
               value={formEdicao.paciente}
@@ -705,7 +705,7 @@ export default function Lancamentos() {
               onChange={e => setFormEdicao(f => ({ ...f, nome_responsavel: e.target.value }))} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Valor Total (R$)" type="number" min={0} step={0.01}
               value={formEdicao.valor_total || ''}

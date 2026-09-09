@@ -162,7 +162,7 @@ export default function Inadimplencia() {
 
       {/* Filtros */}
       <Card>
-        <div className="px-6 py-4 flex gap-3 flex-wrap items-center">
+        <div className="px-4 md:px-6 py-4 flex gap-3 flex-wrap items-center">
           <select
             value={filtroParceria}
             onChange={e => setFiltroParceria(e.target.value)}

@@ -112,7 +112,7 @@ export default function Parcelas() {
       )}
 
       <Card>
-        <div className="px-6 py-4 flex gap-3 flex-wrap items-center">
+        <div className="px-4 md:px-6 py-4 flex gap-3 flex-wrap items-center">
           <input
             type="text"
             placeholder="Buscar paciente..."

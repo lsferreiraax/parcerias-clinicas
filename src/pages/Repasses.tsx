@@ -214,7 +214,7 @@ export default function Repasses() {
 
       {/* Filtros */}
       <Card>
-        <div className="px-6 py-4 flex gap-4 flex-wrap items-end">
+        <div className="px-4 md:px-6 py-4 flex gap-3 flex-wrap items-end">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Paciente</label>
             <input
