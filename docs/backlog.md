@@ -21,8 +21,8 @@ Atualizado em: 2026-09-08
 
 | # | Item | Prioridade | Esforço | Status |
 |---|------|-----------|---------|--------|
-| M1 | Sidebar responsiva (hambúrguer/drawer) | 🔴 | ~10k | 📋 |
-| M2 | Padding e layout adaptativo mobile | 🔴 | ~3k | 📋 |
+| M1 | Sidebar responsiva (hambúrguer/drawer) | 🔴 | ~10k | ✅ |
+| M2 | Padding e layout adaptativo mobile | 🔴 | ~3k | ✅ |
 | 6.2 | Comprovante de repasse em PDF | 🟡 | ~8k | 📋 |
 | 4.2 | Alerta de parcelas vencidas por e-mail | 🟡 | ~10k | 📋 |
 | 4.1 | Notificação por e-mail ao conciliar repasse | 🟡 | ~15k | 📋 |
@@ -39,7 +39,7 @@ Atualizado em: 2026-09-08
 > Sem essas correções, o sistema não é utilizável em smartphones.
 
 ### M1 — Sidebar responsiva
-**Status:** 📋 Planejado | **Prioridade:** 🔴 | **Tokens est.:** ~10k
+**Status:** ✅ Implementado (2026-09-08) | **Prioridade:** 🔴 | **Tokens est.:** ~10k
 
 **Problema:**
 A sidebar fixa de 256px (`w-64`) ocupa 2/3 da tela em celulares (375–430px). Não há menu hambúrguer, drawer deslizante ou bottom navigation. O conteúdo principal fica com ~120px — inutilizável.
@@ -57,7 +57,7 @@ A sidebar fixa de 256px (`w-64`) ocupa 2/3 da tela em celulares (375–430px). N
 ---
 
 ### M2 — Padding e layout adaptativo
-**Status:** 📋 Planejado | **Prioridade:** 🔴 | **Tokens est.:** ~3k
+**Status:** ✅ Implementado (2026-09-08) | **Prioridade:** 🔴 | **Tokens est.:** ~3k
 
 **Problema:**
 O conteúdo principal usa `p-8` (32px) fixo. Em tela de 375px resta apenas ~311px úteis. A barra de filtros com `flex-wrap` empilha de forma desorganizada.
@@ -248,3 +248,5 @@ Não há painel centralizado mostrando parcelas renegociadas. A informação est
 | 2026-09-08 | Validação de integridade do rateio | 5 |
 | 2026-09-08 | Bug fix: percentuais de rateio ÷ 100 | — |
 | 2026-09-08 | Busca por paciente em Lançamentos | — |
+| 2026-09-08 | M1 — Sidebar responsiva com drawer mobile | M |
+| 2026-09-08 | M2 — Padding adaptativo e formulários mobile | M |
