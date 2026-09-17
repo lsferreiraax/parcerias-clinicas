@@ -2,10 +2,13 @@ import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { useSessoes, useCriarSessao, useAtualizarSessao, useDeletarSessao } from '@/hooks/useSessoes'
 import { usePacientes } from '@/hooks/usePacientes'
+import { useQuery } from '@tanstack/react-query'
+import { listarParcerias } from '@/services/configuracoes'
 import {
   Sessao, NovaSessao, StatusSessao, ModalidadeSessao,
   STATUS_SESSAO, MODALIDADE_SESSAO,
   semanaDeData, formatarData, diasDaSemana,
+  publicarEventoSessaoRealizada,
 } from '@/services/sessoes'
 
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
@@ -25,6 +28,7 @@ const VAZIA: NovaSessao = {
   modalidade: 'presencial',
   status: 'agendada',
   valor_sessao: undefined,
+  parceria_id: undefined,
   observacoes: '',
 }
 
@@ -41,6 +45,7 @@ export default function Agenda() {
 
   const { data: sessoes = [], isLoading } = useSessoes(formatarData(inicio), formatarData(fim))
   const { data: pacientes = [] } = usePacientes()
+  const { data: parcerias = [] } = useQuery({ queryKey: ['parcerias'], queryFn: listarParcerias })
   const criar = useCriarSessao()
   const atualizar = useAtualizarSessao()
   const deletar = useDeletarSessao()
@@ -81,15 +86,16 @@ export default function Agenda() {
   function abrirEdicao(s: Sessao) {
     setEditando(s)
     setForm({
-      paciente_id: s.paciente_id,
+      paciente_id:     s.paciente_id,
       profissional_id: s.profissional_id,
-      data_sessao: s.data_sessao,
-      hora_inicio: s.hora_inicio,
-      hora_fim: s.hora_fim ?? '',
-      modalidade: s.modalidade,
-      status: s.status,
-      valor_sessao: s.valor_sessao,
-      observacoes: s.observacoes ?? '',
+      parceria_id:     s.parceria_id,
+      data_sessao:     s.data_sessao,
+      hora_inicio:     s.hora_inicio,
+      hora_fim:        s.hora_fim ?? '',
+      modalidade:      s.modalidade,
+      status:          s.status,
+      valor_sessao:    s.valor_sessao,
+      observacoes:     s.observacoes ?? '',
     })
     setModalAberto(true)
   }
@@ -97,16 +103,28 @@ export default function Agenda() {
   async function salvar() {
     const dados: NovaSessao = {
       ...form,
-      hora_fim: form.hora_fim || undefined,
-      observacoes: form.observacoes || undefined,
-      valor_sessao: form.valor_sessao || undefined,
+      hora_fim:        form.hora_fim || undefined,
+      observacoes:     form.observacoes || undefined,
+      valor_sessao:    form.valor_sessao || undefined,
       profissional_id: form.profissional_id || undefined,
+      parceria_id:     form.parceria_id || undefined,
     }
+
+    const statusAnterior = editando?.status
+
+    let sessaoSalva: Sessao
     if (editando) {
-      await atualizar.mutateAsync({ id: editando.id, dados })
+      sessaoSalva = await atualizar.mutateAsync({ id: editando.id, dados })
     } else {
-      await criar.mutateAsync(dados)
+      sessaoSalva = await criar.mutateAsync(dados)
     }
+
+    // Publica evento ao marcar como realizada (apenas na transição)
+    const mudouParaRealizada = dados.status === 'realizada' && statusAnterior !== 'realizada'
+    if (mudouParaRealizada) {
+      publicarEventoSessaoRealizada(sessaoSalva).catch(console.warn)
+    }
+
     setModalAberto(false)
   }
 
@@ -326,17 +344,35 @@ export default function Agenda() {
               </div>
 
               {/* Valor e Observações */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor da sessão (R$)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.valor_sessao ?? ''}
-                  onChange={e => setForm(f => ({ ...f, valor_sessao: e.target.value ? Number(e.target.value) : undefined }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="0,00"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor da sessão (R$)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.valor_sessao ?? ''}
+                    onChange={e => setForm(f => ({ ...f, valor_sessao: e.target.value ? Number(e.target.value) : undefined }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="0,00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Parceria
+                    <span className="ml-1 text-xs text-gray-400 font-normal">(gera lançamento)</span>
+                  </label>
+                  <select
+                    value={form.parceria_id ?? ''}
+                    onChange={e => setForm(f => ({ ...f, parceria_id: e.target.value || undefined }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Sem vínculo</option>
+                    {parcerias.map(p => (
+                      <option key={p.id} value={p.id}>{p.id} — {p.descricao ?? `Parceria ${p.id}`}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>

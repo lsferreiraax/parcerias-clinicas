@@ -7,6 +7,7 @@ export interface Sessao {
   id: string
   paciente_id: string
   profissional_id?: string
+  parceria_id?: string
   data_sessao: string
   hora_inicio: string
   hora_fim?: string
@@ -25,6 +26,7 @@ export interface Sessao {
 export interface NovaSessao {
   paciente_id: string
   profissional_id?: string
+  parceria_id?: string
   data_sessao: string
   hora_inicio: string
   hora_fim?: string
@@ -114,6 +116,43 @@ export function semanaDeData(data: Date): { inicio: Date; fim: Date } {
 
 export function formatarData(d: Date): string {
   return d.toISOString().slice(0, 10)
+}
+
+export async function publicarEventoSessaoRealizada(sessao: Sessao): Promise<void> {
+  // Grava evento de auditoria
+  const { data: evento } = await supabase
+    .from('eventos_sistema')
+    .insert({
+      tipo: 'sessao.realizada',
+      origem: 'psicologia',
+      payload: {
+        sessao_id:        sessao.id,
+        paciente_id:      sessao.paciente_id,
+        paciente_nome:    sessao.pacientes?.nome ?? null,
+        profissional_id:  sessao.profissional_id ?? null,
+        data_sessao:      sessao.data_sessao,
+        valor_sessao:     sessao.valor_sessao ?? 0,
+        parceria_id:      sessao.parceria_id ?? null,
+      },
+    })
+    .select('id')
+    .single()
+
+  // Processa integração financeira via Edge Function (fire-and-forget se falhar)
+  try {
+    await supabase.functions.invoke('psicologia-eventos', {
+      body: {
+        evento_id:     evento?.id ?? null,
+        sessao_id:     sessao.id,
+        parceria_id:   sessao.parceria_id ?? null,
+        paciente_nome: sessao.pacientes?.nome ?? null,
+        data_sessao:   sessao.data_sessao,
+        valor_sessao:  sessao.valor_sessao ?? 0,
+      },
+    })
+  } catch (e) {
+    console.warn('[psicologia-eventos] falhou:', e)
+  }
 }
 
 export function diasDaSemana(inicio: Date): Date[] {
