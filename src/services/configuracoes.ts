@@ -25,9 +25,35 @@ export async function listarParcerias(): Promise<ParceriaCompleta[]> {
   return data as ParceriaCompleta[]
 }
 
-export async function salvarParceria(id: string, patch: Partial<ParceriaCompleta>) {
+export async function salvarParceria(id: string, patch: Partial<ParceriaCompleta>, original?: ParceriaCompleta) {
+  const { data: { user } } = await supabase.auth.getUser()
   const { error } = await supabase.from('parcerias').update(patch).eq('id', id)
   if (error) throw error
+
+  if (original) {
+    const logs = (Object.entries(patch) as [keyof ParceriaCompleta, unknown][])
+      .filter(([k, v]) => original[k] !== v)
+      .map(([k, v]) => ({
+        parceria_id:    id,
+        campo_alterado: k as string,
+        valor_anterior: String(original[k] ?? ''),
+        valor_novo:     String(v ?? ''),
+        alterado_por:   user?.id ?? null,
+      }))
+    if (logs.length > 0) {
+      await supabase.from('parcerias_log').insert(logs)
+    }
+  }
+}
+
+export async function getLogParceria(parceriaId: string) {
+  const { data, error } = await supabase
+    .from('parcerias_log')
+    .select('*')
+    .eq('parceria_id', parceriaId)
+    .order('alterado_em', { ascending: false })
+  if (error) throw error
+  return data as { id: string; campo_alterado: string; valor_anterior: string | null; valor_novo: string | null; alterado_em: string }[]
 }
 
 export async function criarParceria(parceria: Omit<ParceriaCompleta, 'ativo'>) {

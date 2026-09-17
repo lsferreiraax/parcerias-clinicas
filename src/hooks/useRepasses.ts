@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   listarRepasses, editarValorRepasse, conciliarRepasse,
   desconciliarRepasse, conciliarEmLote, buscarLogRepasse,
-  contarRepassesPendentes,
+  contarRepassesPendentes, buscarRepassesAntigos,
 } from '@/services/repasses'
 import type { FiltroRepasse } from '@/services/repasses'
 
@@ -54,6 +54,14 @@ export function useRepassesPendentesAlerta() {
     queryKey: ['repasses-alerta'],
     queryFn: contarRepassesPendentes,
     refetchInterval: 5 * 60_000,
+  })
+}
+
+export function useRepassesAntigos() {
+  return useQuery({
+    queryKey: ['repasses-antigos'],
+    queryFn: buscarRepassesAntigos,
+    refetchInterval: 10 * 60_000,
   })
 }
 

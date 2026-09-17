@@ -5,10 +5,11 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, Legend,
 } from 'recharts'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { KpiCard, Card, CardHeader, CardBody } from '@/components/ui'
+import { TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react'
+import { KpiCard, Card, CardHeader, CardBody, FiltroData } from '@/components/ui'
+import { useNavigate } from 'react-router-dom'
 import { useKPIs } from '@/hooks/useResumo'
-import { useReceitaMensal, useInadimplenciaMensal, useKpiComparativo, useRankingProfissionais } from '@/hooks/useDashboard'
+import { useReceitaMensal, useInadimplenciaMensal, useKpiComparativo, useRankingProfissionais, useMetasMensais } from '@/hooks/useDashboard'
 import { fmt } from '@/lib/utils'
 
 const PROF_CORES: Record<string, string> = {
@@ -57,12 +58,20 @@ function SeletorMes({ value, onChange }: { value: Date; onChange: (d: Date) => v
 
 export default function Dashboard() {
   const [mesSelecionado, setMesSelecionado] = useState(new Date())
+  const [dataInicio, setDataInicio] = useState('')
+  const [dataFim, setDataFim]       = useState('')
+  const navigate = useNavigate()
 
-  const { data: kpis }           = useKPIs()
+  const filtroKpi = dataInicio || dataFim
+    ? { ...(dataInicio ? { dataInicio } : {}), ...(dataFim ? { dataFim } : {}) }
+    : undefined
+
+  const { data: kpis }           = useKPIs(filtroKpi)
   const { data: receitaMensal }  = useReceitaMensal()
   const { data: inadimplencia }  = useInadimplenciaMensal()
   const { data: kpiComp }        = useKpiComparativo()
   const { data: ranking }        = useRankingProfissionais(mesSelecionado)
+  const { data: metas }          = useMetasMensais()
 
   const varReceita = variacao(kpiComp?.receitaMes ?? 0, kpiComp?.receitaMesAnterior ?? 0)
   const varTicket  = variacao(kpiComp?.ticketMedio ?? 0, kpiComp?.ticketMedioAnterior ?? 0)
@@ -73,17 +82,46 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1F3864]">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Visão geral das parcerias clínicas</p>
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1F3864]">Dashboard</h1>
+          <p className="text-gray-500 text-sm mt-1">Visão geral das parcerias clínicas</p>
+        </div>
+        <FiltroData
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          onChangeInicio={setDataInicio}
+          onChangeFim={setDataFim}
+          onLimpar={() => { setDataInicio(''); setDataFim('') }}
+        />
       </div>
+      {filtroKpi && (
+        <div className="text-xs text-[#2E75B6] bg-blue-50 border border-blue-100 rounded-lg px-4 py-2">
+          KPIs filtrados por período: {dataInicio ? new Date(dataInicio + 'T12:00:00').toLocaleDateString('pt-BR') : '—'} até {dataFim ? new Date(dataFim + 'T12:00:00').toLocaleDateString('pt-BR') : '—'} &nbsp;·&nbsp; Os gráficos continuam exibindo os últimos 12 meses.
+        </div>
+      )}
 
       {/* KPIs gerais */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <KpiCard label="Total Atendimentos" value={kpis?.totalAtendimentos ?? 0}          color="border-l-[#1F3864]" />
         <KpiCard label="Receita Total"      value={fmt.moeda(kpis?.receitaTotal ?? 0)}    color="border-l-[#2E75B6]" />
         <KpiCard label="Receita Recebida"   value={fmt.moeda(kpis?.receitaPaga ?? 0)}     color="border-l-green-500" />
         <KpiCard label="Parcelas Vencidas"  value={kpis?.parcelasVencidas ?? 0} sub="pendentes" color="border-l-red-400" />
+        <button
+          onClick={() => navigate('/repasses')}
+          className="text-left group"
+        >
+          <Card className="border-l-4 border-l-orange-400 h-full transition-shadow group-hover:shadow-md">
+            <div className="p-4 space-y-1">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Repasses Pendentes</p>
+              <p className="text-xl font-bold text-orange-600">{fmt.moeda(kpis?.repassesPendentesValor ?? 0)}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-400">{kpis?.repassesPendentesCount ?? 0} não conciliado(s)</p>
+                <ArrowRight size={13} className="text-gray-300 group-hover:text-orange-400 transition-colors" />
+              </div>
+            </div>
+          </Card>
+        </button>
       </div>
 
       {/* KPIs comparativos do mês atual */}
@@ -164,6 +202,51 @@ export default function Dashboard() {
           </CardBody>
         </Card>
       </div>
+
+      {/* Metas mensais por parceria */}
+      {metas && metas.some(m => m.meta_mensal > 0) && (
+        <Card>
+          <CardHeader>
+            <h2 className="font-semibold text-[#1F3864]">Metas Mensais por Parceria</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Realizado vs meta em {format(new Date(), 'MMMM/yyyy', { locale: ptBR })}</p>
+          </CardHeader>
+          <CardBody>
+            <div className="space-y-4">
+              {metas.filter(m => m.meta_mensal > 0).map(m => {
+                const pct = m.meta_mensal > 0 ? Math.min((m.realizado / m.meta_mensal) * 100, 100) : 0
+                const atingida = m.realizado >= m.meta_mensal
+                return (
+                  <div key={m.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        Parceria {m.id} — {m.descricao}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-gray-500 text-xs">{fmt.moeda(m.realizado)} / {fmt.moeda(m.meta_mensal)}</span>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          atingida
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                        }`}>
+                          {pct.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5">
+                      <div
+                        className={`h-2.5 rounded-full transition-all duration-500 ${
+                          atingida ? 'bg-green-500' : 'bg-[#2E75B6]'
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Ranking de Profissionais */}
       <Card>

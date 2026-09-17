@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { CheckCircle, AlertCircle, CheckSquare, History, RefreshCw, FileDown, RefreshCcw } from 'lucide-react'
-import { Card, Badge, KpiCard, FiltroData } from '@/components/ui'
-import { useParcelas, useMarcarParcelaPaga, useBaixarEmLote, useRenegociadas } from '@/hooks/useResumo'
+import { useState, useEffect } from 'react'
+import { CheckCircle, AlertCircle, CheckSquare, History, RefreshCw, FileDown, RefreshCcw, XCircle } from 'lucide-react'
+import { Card, Badge, KpiCard, FiltroData, Paginacao } from '@/components/ui'
+import { useParcelas, useMarcarParcelaPaga, useBaixarEmLote, useRenegociadas, useCancelarParcela } from '@/hooks/useResumo'
 import { usePerfil } from '@/contexts/PerfilContext'
 import BaixaEmLote from '@/components/parcelas/BaixaEmLote'
 import HistoricoParcela from '@/components/parcelas/HistoricoParcela'
@@ -31,6 +31,12 @@ export default function Parcelas() {
   const [parcelaRenegociar, setParcelaRenegociar]   = useState<{
     id: string; data_vencimento: string; valor_parcela: number; paciente: string
   } | null>(null)
+  const [parcelaCancelar, setParcelaCancelar]       = useState<{ id: string; paciente: string } | null>(null)
+  const [motivoCancelamento, setMotivoCancelamento] = useState('')
+  const [pagina, setPagina]                         = useState(1)
+  const POR_PAGINA = 50
+
+  useEffect(() => { setPagina(1) }, [filtroStatus, filtroPaciente, dataInicio, dataFim])
 
   const filtros = {
     ...(filtroStatus   ? { status: filtroStatus }     : {}),
@@ -42,9 +48,11 @@ export default function Parcelas() {
   const { data: renegociadas, isLoading: loadingReneg } = useRenegociadas()
   const marcarPaga  = useMarcarParcelaPaga()
   const baixarLote  = useBaixarEmLote()
+  const cancelar    = useCancelarParcela()
 
   const hoje      = new Date().toISOString().split('T')[0]
   const lista     = parcelas ?? []
+  const listaPagina = lista.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
   const vencidas  = lista.filter(p => p.status === 'pendente' && p.data_vencimento < hoje)
   const pendentes = lista.filter(p => p.status === 'pendente')
   const pagas     = lista.filter(p => p.status === 'pago')
@@ -77,12 +85,22 @@ export default function Parcelas() {
     setModalLote(false)
   }
 
+  const canceladas = lista.filter(p => p.status === 'cancelado')
+
   const badgeStatus = (p: typeof lista[0]) => {
     const vencida = p.status === 'pendente' && p.data_vencimento < hoje
-    if (p.status === 'pago')         return <Badge variant="success">pago</Badge>
-    if (p.status === 'renegociada')  return <Badge variant="warning">renegociada</Badge>
-    if (vencida)                     return <Badge variant="danger">vencida</Badge>
+    if (p.status === 'pago')        return <Badge variant="success">pago</Badge>
+    if (p.status === 'renegociada') return <Badge variant="warning">renegociada</Badge>
+    if (p.status === 'cancelado')   return <Badge variant="danger">cancelado</Badge>
+    if (vencida)                    return <Badge variant="danger">vencida</Badge>
     return <Badge variant="warning">pendente</Badge>
+  }
+
+  const handleConfirmarCancelamento = async () => {
+    if (!parcelaCancelar || !motivoCancelamento.trim()) return
+    await cancelar.mutateAsync({ id: parcelaCancelar.id, motivo: motivoCancelamento.trim() })
+    setParcelaCancelar(null)
+    setMotivoCancelamento('')
   }
 
   const handleExportarReneg = async () => {
@@ -122,11 +140,12 @@ export default function Parcelas() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        <KpiCard label="Pendentes"    value={pendentes.length}          color="border-l-yellow-400" />
-        <KpiCard label="Vencidas"     value={vencidas.length}           color="border-l-red-500" />
-        <KpiCard label="Pagas"        value={pagas.length}              color="border-l-green-500" />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <KpiCard label="Pendentes"    value={pendentes.length}            color="border-l-yellow-400" />
+        <KpiCard label="Vencidas"     value={vencidas.length}             color="border-l-red-500" />
+        <KpiCard label="Pagas"        value={pagas.length}                color="border-l-green-500" />
         <KpiCard label="Renegociadas" value={renegociadas?.length ?? '—'} color="border-l-amber-500" />
+        <KpiCard label="Canceladas"   value={canceladas.length}           color="border-l-gray-400" />
       </div>
 
       {/* Abas */}
@@ -296,7 +315,7 @@ export default function Parcelas() {
               {!isLoading && lista.length === 0 && (
                 <tr><td colSpan={podeGerenciar ? 12 : 11} className="px-6 py-8 text-center text-gray-400">Nenhuma parcela encontrada</td></tr>
               )}
-              {lista.map(p => {
+              {listaPagina.map(p => {
                 const vencida = p.status === 'pendente' && p.data_vencimento < hoje
                 const paciente = p.lancamentos?.paciente ?? '—'
                 return (
@@ -325,6 +344,9 @@ export default function Parcelas() {
                         )}
                         {(vencida || p.status === 'renegociada') && isAdmin && (
                           <button onClick={() => setParcelaRenegociar({ id: p.id, data_vencimento: p.data_vencimento, valor_parcela: p.valor_parcela, paciente })} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Renegociar"><RefreshCw size={15} /></button>
+                        )}
+                        {p.status === 'pendente' && isAdmin && (
+                          <button onClick={() => { setParcelaCancelar({ id: p.id, paciente }); setMotivoCancelamento('') }} className="p-1.5 text-red-500 hover:bg-red-50 rounded" title="Cancelar parcela"><XCircle size={15} /></button>
                         )}
                         <button onClick={() => setParcelaHistorico({ id: p.id, paciente })} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded" title="Ver histórico"><History size={15} /></button>
                       </div>
@@ -389,6 +411,11 @@ export default function Parcelas() {
                       <RefreshCw size={13} /> Renegociar
                     </button>
                   )}
+                  {p.status === 'pendente' && isAdmin && (
+                    <button onClick={() => { setParcelaCancelar({ id: p.id, paciente }); setMotivoCancelamento('') }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg">
+                      <XCircle size={13} /> Cancelar
+                    </button>
+                  )}
                   <button onClick={() => setParcelaHistorico({ id: p.id, paciente })} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg">
                     <History size={13} /> Histórico
                   </button>
@@ -397,6 +424,7 @@ export default function Parcelas() {
             )
           })}
         </div>
+        <Paginacao total={lista.length} pagina={pagina} porPagina={POR_PAGINA} onChange={setPagina} />
       </Card>
 
       </>}
@@ -426,6 +454,54 @@ export default function Parcelas() {
           paciente={parcelaRenegociar.paciente}
           onFechar={() => setParcelaRenegociar(null)}
         />
+      )}
+
+      {parcelaCancelar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full shrink-0">
+                <XCircle size={20} className="text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Cancelar parcela</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                  Paciente: <span className="font-medium text-gray-700 dark:text-gray-300">{parcelaCancelar.paciente}</span>
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Motivo do cancelamento <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={motivoCancelamento}
+                onChange={e => setMotivoCancelamento(e.target.value)}
+                placeholder="Descreva o motivo do cancelamento..."
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
+              />
+              {!motivoCancelamento.trim() && (
+                <p className="text-xs text-red-500">O motivo é obrigatório</p>
+              )}
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => { setParcelaCancelar(null); setMotivoCancelamento('') }}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={handleConfirmarCancelamento}
+                disabled={!motivoCancelamento.trim() || cancelar.isPending}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
+              >
+                {cancelar.isPending ? 'Cancelando...' : 'Confirmar cancelamento'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

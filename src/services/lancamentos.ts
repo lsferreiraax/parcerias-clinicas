@@ -246,6 +246,12 @@ export async function deletarLancamento(id: string) {
   if (error) throw error
 }
 
+export async function importarEmLote(lancamentos: NovoLancamento[]): Promise<void> {
+  for (const dado of lancamentos) {
+    await criarLancamento(dado)
+  }
+}
+
 export async function deletarEmLote(ids: string[], motivo: string) {
   const { data: lancamentos, error: errBusca } = await supabase
     .from('lancamentos')

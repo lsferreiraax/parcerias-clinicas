@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileDown, FileText, AlertTriangle, TrendingUp, ArrowLeftRight } from 'lucide-react'
+import { FileDown, FileText, AlertTriangle, TrendingUp, ArrowLeftRight, CreditCard } from 'lucide-react'
 import { Card, Button, FiltroData } from '@/components/ui'
 import { useLancamentos } from '@/hooks/useLancamentos'
 import { useQuery } from '@tanstack/react-query'
@@ -11,6 +11,7 @@ import {
   gerarRelatorioRateio,
   gerarRelatorioMensalRepasses,
   exportarRepassesMensalExcel,
+  gerarRelatorioParcelas,
 } from '@/services/relatorio'
 import type { ParceriaId } from '@/types'
 
@@ -49,14 +50,47 @@ export default function Relatorios() {
   const mesAtualRepasses = new Date().toISOString().slice(0, 7)
   const [mesRepasses, setMesRepasses] = useState(mesAtualRepasses)
 
-  const [gerandoLanc, setGerandoLanc]       = useState(false)
-  const [gerandoInad, setGerandoInad]       = useState(false)
-  const [gerandoRateio, setGerandoRateio]   = useState(false)
-  const [gerandoRep, setGerandoRep]         = useState(false)
-  const [exportandoRep, setExportandoRep]   = useState(false)
+  // Filtros — Parcelas
+  const [filtrosParcelas, setFiltrosParcelas] = useState<{
+    dataInicio?: string
+    dataFim?: string
+    status?: string
+    parceria?: string
+  }>({})
+
+  const [gerandoLanc, setGerandoLanc]           = useState(false)
+  const [gerandoInad, setGerandoInad]           = useState(false)
+  const [gerandoRateio, setGerandoRateio]       = useState(false)
+  const [gerandoRep, setGerandoRep]             = useState(false)
+  const [exportandoRep, setExportandoRep]       = useState(false)
+  const [gerandoParcelas, setGerandoParcelas]   = useState(false)
 
   const { data: lancamentos    } = useLancamentos(filtrosLanc)
   const { data: parcelasVencidas } = useParcelas('vencido')
+
+  const { data: parcelasRelatorio } = useQuery({
+    queryKey: ['parcelas-relatorio-filtrado', filtrosParcelas],
+    queryFn: async () => {
+      let q = supabase
+        .from('parcelas')
+        .select('*, lancamentos(paciente, parceria_id)')
+        .order('data_vencimento', { ascending: true })
+      if (filtrosParcelas.status)      q = q.eq('status', filtrosParcelas.status)
+      if (filtrosParcelas.dataInicio)  q = q.gte('data_vencimento', filtrosParcelas.dataInicio)
+      if (filtrosParcelas.dataFim)     q = q.lte('data_vencimento', filtrosParcelas.dataFim)
+      if (filtrosParcelas.parceria) {
+        const { data: lancIds } = await supabase
+          .from('lancamentos')
+          .select('id')
+          .eq('parceria_id', filtrosParcelas.parceria)
+        if (lancIds?.length) q = q.in('lancamento_id', lancIds.map(l => l.id))
+        else return []
+      }
+      const { data, error } = await q
+      if (error) throw error
+      return data ?? []
+    },
+  })
 
   const { data: repassesMes } = useQuery({
     queryKey: ['repasses-mes-relatorio', mesRepasses],
@@ -118,6 +152,16 @@ export default function Relatorios() {
       await gerarRelatorioInadimplencia(parcelasVencidas, usuarioNome)
     } finally {
       setGerandoInad(false)
+    }
+  }
+
+  const handleParcelas = async () => {
+    if (!parcelasRelatorio?.length) return
+    setGerandoParcelas(true)
+    try {
+      await gerarRelatorioParcelas(parcelasRelatorio, filtrosParcelas, usuarioNome)
+    } finally {
+      setGerandoParcelas(false)
     }
   }
 
@@ -208,6 +252,70 @@ export default function Relatorios() {
             </Button>
             <p className="text-sm text-gray-500">
               {parcelasVencidas?.length ?? 0} parcela(s) vencida(s)
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Relatório de Parcelas */}
+      <Card>
+        <div className="px-6 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-50 text-purple-700">
+              <CreditCard size={20} />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-800">Relatório de Parcelas</h2>
+              <p className="text-sm text-gray-500">Visão completa de parcelas com filtro por período, status e parceria</p>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="flex gap-4 flex-wrap items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                value={filtrosParcelas.status ?? ''}
+                onChange={e => setFiltrosParcelas(f => ({ ...f, status: e.target.value || undefined }))}>
+                <option value="">Todos</option>
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+                <option value="vencido">Vencido</option>
+                <option value="renegociada">Renegociada</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Parceria</label>
+              <select
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                value={filtrosParcelas.parceria ?? ''}
+                onChange={e => setFiltrosParcelas(f => ({ ...f, parceria: e.target.value || undefined }))}>
+                <option value="">Todas</option>
+                {(['A','B','C'] as ParceriaId[]).map(p => <option key={p} value={p}>Parceria {p}</option>)}
+              </select>
+            </div>
+            <FiltroData
+              dataInicio={filtrosParcelas.dataInicio ?? ''}
+              dataFim={filtrosParcelas.dataFim ?? ''}
+              onChangeInicio={v => setFiltrosParcelas(f => ({ ...f, dataInicio: v || undefined }))}
+              onChangeFim={v => setFiltrosParcelas(f => ({ ...f, dataFim: v || undefined }))}
+              onLimpar={() => setFiltrosParcelas(f => ({ ...f, dataInicio: undefined, dataFim: undefined }))}
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={handleParcelas}
+              loading={gerandoParcelas}
+              disabled={!parcelasRelatorio?.length}
+              className="bg-purple-700 hover:bg-purple-800"
+            >
+              <FileDown size={16} />
+              {gerandoParcelas ? 'Gerando...' : 'Gerar PDF'}
+            </Button>
+            <p className="text-sm text-gray-500">
+              {parcelasRelatorio?.length ?? 0} parcela(s) encontrada(s)
             </p>
           </div>
         </div>

@@ -137,6 +137,25 @@ export async function contarRepassesPendentes(): Promise<number> {
   return count ?? 0
 }
 
+export async function buscarRepassesAntigos(): Promise<{ count: number; tipos: string[] }> {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 30)
+  const cutoffStr = cutoff.toISOString().split('T')[0]
+
+  const { data, error } = await supabase
+    .from('repasses')
+    .select('tipo, lancamentos(data_atendimento)')
+    .eq('status', 'nao_conciliado')
+  if (error) throw error
+
+  const antigos = (data ?? []).filter(r => {
+    const lancamento = Array.isArray(r.lancamentos) ? r.lancamentos[0] : r.lancamentos
+    return lancamento?.data_atendimento && lancamento.data_atendimento < cutoffStr
+  })
+  const tipos = [...new Set(antigos.map(r => r.tipo as string))]
+  return { count: antigos.length, tipos }
+}
+
 export async function buscarLogRepasse(repasseId: string): Promise<RepasseLog[]> {
   const { data, error } = await supabase
     .from('repasses_log')

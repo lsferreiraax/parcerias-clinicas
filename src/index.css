@@ -3,3 +3,12 @@
 @tailwind utilities;
 
 body { font-family: 'Inter', system-ui, sans-serif; }
+
+/* Dark mode: override hardcoded primary color on headings */
+.dark h1, .dark h2 { color: #93C5FD; }
+.dark h3           { color: #BFDBFE; }
+
+/* Ensure tables in dark mode have readable borders */
+.dark table thead  { background-color: #1F2937; color: #9CA3AF; }
+.dark table tbody tr { border-color: #374151; }
+.dark table tbody tr:hover { background-color: #1F2937 !important; }

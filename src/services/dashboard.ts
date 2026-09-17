@@ -174,3 +174,40 @@ export async function getRankingProfissionais(iniMes: string, fimMes: string): P
     { nome: 'Psi2',   tipo: 'psi2',   total: totais.psi2   },
   ].sort((a, b) => b.total - a.total)
 }
+
+export interface MetaParceria {
+  id: string
+  descricao: string
+  meta_mensal: number
+  realizado: number
+}
+
+export async function getMetasMensais(): Promise<MetaParceria[]> {
+  const iniMes = format(startOfMonth(new Date()), 'yyyy-MM-dd')
+  const fimMes = format(endOfMonth(new Date()), 'yyyy-MM-dd')
+
+  const [{ data: parcerias, error: e1 }, { data: lancamentos, error: e2 }] = await Promise.all([
+    supabase.from('parcerias').select('id, descricao, meta_mensal').eq('ativo', true).order('id'),
+    supabase
+      .from('lancamentos')
+      .select('parceria_id, valor_total')
+      .eq('status', 'pago')
+      .gte('data_atendimento', iniMes)
+      .lte('data_atendimento', fimMes),
+  ])
+  if (e1) throw e1
+  if (e2) throw e2
+
+  const realizadoMap = new Map<string, number>()
+  for (const l of lancamentos ?? []) {
+    const prev = realizadoMap.get(l.parceria_id) ?? 0
+    realizadoMap.set(l.parceria_id, prev + Number(l.valor_total))
+  }
+
+  return (parcerias ?? []).map(p => ({
+    id:          p.id,
+    descricao:   p.descricao,
+    meta_mensal: Number(p.meta_mensal ?? 0),
+    realizado:   realizadoMap.get(p.id) ?? 0,
+  }))
+}

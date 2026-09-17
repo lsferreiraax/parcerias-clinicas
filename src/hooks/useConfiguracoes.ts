@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getConfiguracoes, salvarConfiguracoes,
   listarParcerias, salvarParceria, criarParceria,
-  listarProfissionais, salvarProfissional,
+  listarProfissionais, salvarProfissional, getLogParceria,
 } from '@/services/configuracoes'
 import type { Configuracao, ParceriaCompleta, Profissional } from '@/types'
 
@@ -25,8 +25,20 @@ export function useParcerias() {
 export function useSalvarParceria() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Partial<ParceriaCompleta> }) => salvarParceria(id, patch),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['parcerias-config'] }),
+    mutationFn: ({ id, patch, original }: { id: string; patch: Partial<ParceriaCompleta>; original?: ParceriaCompleta }) =>
+      salvarParceria(id, patch, original),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['parcerias-config'] })
+      qc.invalidateQueries({ queryKey: ['parceria-log'] })
+    },
+  })
+}
+
+export function useLogParceria(parceriaId: string | null) {
+  return useQuery({
+    queryKey: ['parceria-log', parceriaId],
+    queryFn: () => getLogParceria(parceriaId!),
+    enabled: !!parceriaId,
   })
 }
 

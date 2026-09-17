@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode, AlertTriangle, XCircle, History, AlertCircle, Search } from 'lucide-react'
-import { Card, Button, Badge, Modal, Input, Select, FiltroData } from '@/components/ui'
+import { Plus, Trash2, CheckCircle, Pencil, Info, CreditCard, Banknote, QrCode, AlertTriangle, XCircle, History, AlertCircle, Search, Upload } from 'lucide-react'
+import { Card, Button, Badge, Modal, Input, Select, FiltroData, Paginacao } from '@/components/ui'
 import {
   useLancamentos, useCriarLancamento, useAtualizarStatusLancamento,
   useDeletarLancamento, useEditarLancamento, useDeletarEmLote,
   useCancelarLancamento, useLogEdicaoLancamento, useVerificarDuplicata,
 } from '@/hooks/useLancamentos'
 import { useParcerias } from '@/hooks/useConfiguracoes'
+import { ImportacaoModal } from '@/components/lancamentos/ImportacaoModal'
 import { fmt } from '@/lib/utils'
 import { calcularRateio, validarResultadoRateio } from '@/services/rateio'
 import { usePerfil } from '@/contexts/PerfilContext'
@@ -182,6 +183,7 @@ export default function Lancamentos() {
   const { data: parcerias = [] } = useParcerias()
 
   const [modal, setModal]                         = useState(false)
+  const [modalImportar, setModalImportar]         = useState(false)
   const [modalEdicao, setModalEdicao]             = useState(false)
   const [modalExclusao, setModalExclusao]         = useState(false)
   const [modalCancelar, setModalCancelar]         = useState<Lancamento | null>(null)
@@ -189,6 +191,11 @@ export default function Lancamentos() {
   const [lancamentoEditando, setLancamentoEditando] = useState<Lancamento | null>(null)
   const [filtros, setFiltros]                     = useState<{ parceria?: string; status?: string; dataInicio?: string; dataFim?: string }>({})
   const [buscaPaciente, setBuscaPaciente]         = useState('')
+  const [pagina, setPagina]                       = useState(1)
+  const POR_PAGINA = 50
+
+  // Reset paginação ao mudar filtros
+  useEffect(() => { setPagina(1) }, [filtros, buscaPaciente])
   const [form, setForm]                           = useState(INIT)
   const [selecionados, setSelecionados]           = useState<Set<string>>(new Set())
   const [motivoExclusao, setMotivoExclusao]       = useState('')
@@ -209,6 +216,8 @@ export default function Lancamentos() {
   const lancamentos = busca
     ? (lancamentosRaw ?? []).filter(l => l.paciente.toLowerCase().includes(busca))
     : lancamentosRaw
+  const totalLancamentos = lancamentos?.length ?? 0
+  const lancamentosPagina = (lancamentos ?? []).slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
   const { data: duplicata } = useVerificarDuplicata(form.paciente, form.data_atendimento, form.parceria_id)
 
   const criar          = useCriarLancamento()
@@ -326,6 +335,11 @@ export default function Lancamentos() {
               Excluir selecionados ({selecionados.size})
             </Button>
           )}
+          {podeEditar && (
+            <Button onClick={() => setModalImportar(true)} className="bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200">
+              <Upload size={16} /> Importar Excel
+            </Button>
+          )}
           <Button onClick={() => setModal(true)}><Plus size={16} /> Novo Lançamento</Button>
         </div>
       </div>
@@ -385,8 +399,8 @@ export default function Lancamentos() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading && <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>}
-              {!isLoading && (!lancamentos || lancamentos.length === 0) && <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>}
-              {(lancamentos ?? []).map(l => {
+              {!isLoading && lancamentosPagina.length === 0 && <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>}
+              {lancamentosPagina.map(l => {
                 const isSelecionado = selecionados.has(l.id)
                 const isPago        = l.status === 'pago'
                 const isCancelado   = l.status === 'cancelado'
@@ -428,8 +442,8 @@ export default function Lancamentos() {
         {/* Versão mobile — cards */}
         <div className="md:hidden divide-y divide-gray-100">
           {isLoading && <p className="px-4 py-8 text-center text-gray-400 text-sm">Carregando...</p>}
-          {!isLoading && (!lancamentos || lancamentos.length === 0) && <p className="px-4 py-8 text-center text-gray-400 text-sm">Nenhum lançamento encontrado</p>}
-          {(lancamentos ?? []).map(l => {
+          {!isLoading && lancamentosPagina.length === 0 && <p className="px-4 py-8 text-center text-gray-400 text-sm">Nenhum lançamento encontrado</p>}
+          {lancamentosPagina.map(l => {
             const isSelecionado = selecionados.has(l.id)
             const isPago        = l.status === 'pago'
             const isCancelado   = l.status === 'cancelado'
@@ -491,6 +505,7 @@ export default function Lancamentos() {
             )
           })}
         </div>
+        <Paginacao total={totalLancamentos} pagina={pagina} porPagina={POR_PAGINA} onChange={setPagina} />
       </Card>
 
       {/* Modal: Excluir em lote */}
@@ -568,6 +583,12 @@ export default function Lancamentos() {
           </div>
         </Modal>
       )}
+
+      <ImportacaoModal
+        open={modalImportar}
+        onClose={() => setModalImportar(false)}
+        parcerias={(parcerias ?? []) as import('@/types').ParceriaCompleta[]}
+      />
 
       {/* Modal: Novo Lançamento */}
       <Modal open={modal} onClose={() => setModal(false)} title="Novo Lançamento">

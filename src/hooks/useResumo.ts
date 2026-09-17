@@ -4,7 +4,7 @@ import type { FiltroResumo } from '@/services/resumo'
 import {
   listarParcelas, marcarParcelaPaga, atualizarStatusParcela,
   baixarEmLote, renegociarParcela, buscarHistorico, contarParcelasAlerta,
-  listarRenegociadas,
+  listarRenegociadas, cancelarParcela,
 } from '@/services/parcelas'
 
 export function useResumoParceria(filtro?: FiltroResumo) {
@@ -15,8 +15,8 @@ export function useResumoProfissional(filtro?: FiltroResumo) {
   return useQuery({ queryKey: ['resumo-profissional', filtro], queryFn: () => getResumoProfissional(filtro) })
 }
 
-export function useKPIs() {
-  return useQuery({ queryKey: ['kpis'], queryFn: getKPIs, refetchInterval: 30_000 })
+export function useKPIs(filtro?: { dataInicio?: string; dataFim?: string }) {
+  return useQuery({ queryKey: ['kpis', filtro], queryFn: () => getKPIs(filtro), refetchInterval: 30_000 })
 }
 
 export function useParcelas(filtros?: Parameters<typeof listarParcelas>[0]) {
@@ -85,6 +85,18 @@ export function useHistoricoParcela(parcelaId: string | null) {
     queryKey: ['historico-parcela', parcelaId],
     queryFn: () => buscarHistorico(parcelaId!),
     enabled: !!parcelaId,
+  })
+}
+
+export function useCancelarParcela() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, motivo }: { id: string; motivo: string }) => cancelarParcela(id, motivo),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['parcelas'] })
+      qc.invalidateQueries({ queryKey: ['kpis'] })
+      qc.invalidateQueries({ queryKey: ['parcelas-alerta'] })
+    },
   })
 }
 

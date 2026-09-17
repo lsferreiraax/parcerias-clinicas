@@ -2,7 +2,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import { fmt } from '@/lib/utils'
-import type { Repasse, TipoRepasse } from '@/types'
+import type { Repasse, TipoRepasse, ResumoParceria, ResumoProfissional } from '@/types'
 import type { ParcelaRenegociada } from '@/services/parcelas'
 
 const TIPO_LABEL: Record<TipoRepasse, string> = {
@@ -83,6 +83,88 @@ function rodape(doc: jsPDF, usuarioNome: string) {
     )
     doc.text(`Página ${i} de ${total}`, largura - 10, altura - 4, { align: 'right' })
   }
+}
+
+// ─── 0. Resumo Financeiro ────────────────────────────────────────────────────
+
+const PROF_LABEL: Record<string, string> = {
+  camta: 'Camta', medico: 'Médico', psi1: 'Psi 1', psi2: 'Psi 2',
+}
+
+export async function gerarRelatorioResumo(
+  parcerias: ResumoParceria[],
+  profissionais: ResumoProfissional[],
+  periodo: string,
+  usuarioNome: string,
+) {
+  const logo = await logoBase64()
+  const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+  let y = cabecalho(doc, logo, 'Resumo Financeiro', periodo || 'Período completo')
+
+  // ── Tabela por parceria ──
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...COR_PRIMARIA as [number, number, number])
+  doc.text('Consolidado por Parceria', 14, y + 4)
+  doc.setTextColor(0, 0, 0)
+
+  const totalGeral = profissionais.reduce((s, p) => s + Number(p.total), 0)
+
+  autoTable(doc, {
+    startY: y + 8,
+    head: [['Parceria', 'Descrição', 'Atend.', 'Valor Total', 'Camta', 'Médico', 'Psi 1', 'Psi 2']],
+    body: parcerias.map(r => [
+      `Parceria ${r.parceria}`,
+      r.descricao,
+      r.total_atendimentos,
+      fmt.moeda(Number(r.valor_total)),
+      Number(r.camta_total)  > 0 ? fmt.moeda(Number(r.camta_total))  : '—',
+      Number(r.medico_total) > 0 ? fmt.moeda(Number(r.medico_total)) : '—',
+      Number(r.psi1_total)   > 0 ? fmt.moeda(Number(r.psi1_total))   : '—',
+      Number(r.psi2_total)   > 0 ? fmt.moeda(Number(r.psi2_total))   : '—',
+    ]),
+    foot: [[
+      'TOTAL', '', parcerias.reduce((s, r) => s + r.total_atendimentos, 0),
+      fmt.moeda(parcerias.reduce((s, r) => s + Number(r.valor_total), 0)),
+      '', '', '', '',
+    ]],
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: COR_PRIMARIA as [number, number, number], textColor: 255, fontStyle: 'bold' },
+    footStyles: { fillColor: [240, 240, 240], textColor: [31, 56, 100], fontStyle: 'bold' },
+    columnStyles: { 0: { fontStyle: 'bold' }, 3: { fontStyle: 'bold' } },
+    margin: { left: 14, right: 14 },
+  })
+
+  y = (doc as any).lastAutoTable.finalY + 10
+
+  // ── Tabela por profissional ──
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...COR_PRIMARIA as [number, number, number])
+  doc.text('Consolidado por Profissional', 14, y)
+  doc.setTextColor(0, 0, 0)
+
+  autoTable(doc, {
+    startY: y + 4,
+    head: [['Profissional', 'Total Repasse', '% do Total']],
+    body: profissionais.map(p => [
+      PROF_LABEL[p.profissional] ?? p.profissional,
+      fmt.moeda(Number(p.total)),
+      totalGeral > 0 ? `${((Number(p.total) / totalGeral) * 100).toFixed(1)}%` : '0%',
+    ]),
+    foot: [['Total Geral', fmt.moeda(totalGeral), '100%']],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: COR_SECUNDARIA as [number, number, number], textColor: 255, fontStyle: 'bold' },
+    footStyles: { fillColor: [240, 240, 240], textColor: [31, 56, 100], fontStyle: 'bold' },
+    columnStyles: { 1: { fontStyle: 'bold' } },
+    margin: { left: 14, right: 14 },
+  })
+
+  rodape(doc, usuarioNome)
+
+  const dataHoje = new Date().toISOString().split('T')[0]
+  doc.save(`resumo-financeiro_${dataHoje}.pdf`)
 }
 
 // ─── 1. Relatório de Lançamentos ─────────────────────────────────────────────
@@ -665,4 +747,102 @@ export function exportarRepasseExcel(repasses: Repasse[], tipo: TipoRepasse) {
   XLSX.utils.book_append_sheet(wb, ws, TIPO_LABEL[tipo])
 
   XLSX.writeFile(wb, `repasse_${tipo}_${new Date().toISOString().slice(0,10)}.xlsx`)
+}
+
+// ─── 9. Relatório de Parcelas por Período ────────────────────────────────────
+
+export interface FiltrosParcelas {
+  dataInicio?: string
+  dataFim?: string
+  status?: string
+  parceria?: string
+}
+
+export async function gerarRelatorioParcelas(
+  parcelas: any[],
+  filtros: FiltrosParcelas,
+  usuarioNome: string
+) {
+  const doc  = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+  const logo = await logoBase64()
+
+  const partes: string[] = []
+  if (filtros.dataInicio || filtros.dataFim) {
+    partes.push(`Vencimento: ${filtros.dataInicio ? fmt.data(filtros.dataInicio) : '—'} a ${filtros.dataFim ? fmt.data(filtros.dataFim) : '—'}`)
+  }
+  if (filtros.status) {
+    const statusLabel: Record<string, string> = {
+      pendente: 'Pendente', pago: 'Pago', vencido: 'Vencido',
+      renegociada: 'Renegociada', cancelado: 'Cancelado',
+    }
+    partes.push(`Status: ${statusLabel[filtros.status] ?? filtros.status}`)
+  }
+  if (filtros.parceria) partes.push(`Parceria: ${filtros.parceria}`)
+  const subtitulo = partes.length ? partes.join('  |  ') : 'Todas as parcelas'
+
+  const y = cabecalho(doc, logo, 'Relatório de Parcelas', subtitulo)
+
+  const totalParcelas = parcelas.length
+  const totalValor    = parcelas.reduce((s, p) => s + Number(p.valor_parcela), 0)
+  const totalPago     = parcelas.filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor_parcela), 0)
+  const totalPendente = parcelas.filter(p => ['pendente','vencido'].includes(p.status)).reduce((s, p) => s + Number(p.valor_parcela), 0)
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(60, 60, 60)
+  doc.text(
+    `Total: ${totalParcelas} parcela(s)  |  Valor total: ${fmt.moeda(totalValor)}  |  Recebido: ${fmt.moeda(totalPago)}  |  Em aberto: ${fmt.moeda(totalPendente)}`,
+    14, y
+  )
+  doc.setTextColor(0, 0, 0)
+
+  const STATUS_LABEL: Record<string, string> = {
+    pendente: 'Pendente', pago: 'Pago', vencido: 'Vencido',
+    renegociada: 'Renegociada', cancelado: 'Cancelado',
+  }
+  const STATUS_COLOR: Record<string, [number, number, number]> = {
+    pago:        [22, 101, 52],
+    vencido:     [153, 27, 27],
+    pendente:    [31, 56, 100],
+    renegociada: [120, 53, 15],
+    cancelado:   [75, 85, 99],
+  }
+
+  autoTable(doc, {
+    startY: y + 6,
+    head: [['Paciente', 'Parceria', 'Parcela', 'Vencimento', 'Dt. Pagamento', 'Valor', 'Forma Pgto', 'Status']],
+    body: parcelas.map(p => {
+      const lanc = p.lancamentos as { paciente: string; parceria_id: string } | null
+      const [ano, mes, dia] = (p.data_vencimento ?? '').split('-')
+      return [
+        lanc?.paciente ?? '—',
+        lanc?.parceria_id ? `Parceria ${lanc.parceria_id}` : '—',
+        `${p.parcela_num}/${p.parcela_total}`,
+        dia && mes && ano ? `${dia}/${mes}/${ano}` : '—',
+        p.data_pagamento ? fmt.data(p.data_pagamento) : '—',
+        fmt.moeda(Number(p.valor_parcela)),
+        p.forma_pagamento === 'avista' ? 'À vista' : p.forma_pagamento === 'parcelado' ? 'Parcelado' : '—',
+        STATUS_LABEL[p.status] ?? p.status,
+      ]
+    }),
+    foot: [['', '', '', '', 'TOTAL', fmt.moeda(totalValor), '', `${totalParcelas} parcelas`]],
+    headStyles: { fillColor: COR_PRIMARIA as [number,number,number], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+    footStyles: { fillColor: COR_SECUNDARIA as [number,number,number], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 7.5 },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    didParseCell(data) {
+      if (data.section === 'body' && data.column.index === 7) {
+        const status = parcelas[data.row.index]?.status as string
+        const cor = STATUS_COLOR[status]
+        if (cor) {
+          data.cell.styles.textColor = cor
+          data.cell.styles.fontStyle = 'bold'
+        }
+      }
+    },
+    margin: { bottom: 20 },
+  })
+
+  rodape(doc, usuarioNome)
+  doc.save(`parcelas_${new Date().toISOString().slice(0, 10)}.pdf`)
 }

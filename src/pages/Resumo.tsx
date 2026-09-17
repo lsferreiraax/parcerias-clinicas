@@ -1,18 +1,24 @@
 import { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { FileDown } from 'lucide-react'
+import { FileDown, FileText } from 'lucide-react'
 import { Card, CardHeader, CardBody, Badge, Button, FiltroData } from '@/components/ui'
 import { useResumoParceria, useResumoProfissional } from '@/hooks/useResumo'
+import { usePerfil } from '@/contexts/PerfilContext'
 import { fmt } from '@/lib/utils'
 import { exportarResumoExcel } from '@/lib/exportarExcel'
+import { gerarRelatorioResumo } from '@/services/relatorio'
 import type { ParceriaId } from '@/types'
 
 const PROF_LABELS: Record<string, string>  = { camta: 'Camta', medico: 'Médico', psi1: 'Psi1', psi2: 'Psi2' }
 const PROF_COLORS: Record<string, string>  = { camta: 'text-blue-700', medico: 'text-green-700', psi1: 'text-yellow-700', psi2: 'text-orange-700' }
 
 export default function Resumo() {
+  const { perfil } = usePerfil()
+  const usuarioNome = perfil?.nome ?? 'Usuário'
+
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim]       = useState('')
+  const [gerandoPdf, setGerandoPdf] = useState(false)
 
   const filtro = {
     ...(dataInicio ? { dataInicio } : {}),
@@ -23,7 +29,21 @@ export default function Resumo() {
   const { data: parceria }     = useResumoParceria(filtroAtivo)
   const { data: profissional } = useResumoProfissional(filtroAtivo)
 
-  const totalGeral   = (profissional ?? []).reduce((s, p) => s + Number(p.total), 0)
+  const totalGeral = (profissional ?? []).reduce((s, p) => s + Number(p.total), 0)
+
+  const periodoLabel = dataInicio || dataFim
+    ? `${dataInicio ? new Date(dataInicio + 'T12:00:00').toLocaleDateString('pt-BR') : '—'} a ${dataFim ? new Date(dataFim + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}`
+    : 'Período completo'
+
+  const handleGerarPdf = async () => {
+    if (!parceria?.length && !profissional?.length) return
+    setGerandoPdf(true)
+    try {
+      await gerarRelatorioResumo(parceria ?? [], profissional ?? [], periodoLabel, usuarioNome)
+    } finally {
+      setGerandoPdf(false)
+    }
+  }
 
   const dadosBarras  = (parceria ?? []).map(r => ({
     name:   `Parceria ${r.parceria}`,
@@ -48,6 +68,15 @@ export default function Resumo() {
             onChangeFim={setDataFim}
             onLimpar={() => { setDataInicio(''); setDataFim('') }}
           />
+          <Button
+            variant="secondary"
+            onClick={handleGerarPdf}
+            loading={gerandoPdf}
+            disabled={!parceria?.length && !profissional?.length}
+          >
+            <FileText size={16} />
+            Exportar PDF
+          </Button>
           <Button
             variant="secondary"
             onClick={() => exportarResumoExcel(parceria ?? [], profissional ?? [])}

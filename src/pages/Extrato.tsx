@@ -26,6 +26,7 @@ export default function Extrato() {
   const [profissional, setProfissional] = useState<TipoProfissional>('camta')
   const [dataInicio, setDataInicio]     = useState('')
   const [dataFim, setDataFim]           = useState('')
+  const [mesAtivo, setMesAtivo]         = useState<string | null>(null)
 
   // Se for perfil Profissional, trava no seu próprio tipo
   useEffect(() => {
@@ -33,6 +34,9 @@ export default function Extrato() {
       setProfissional(perfil.tipo_profissional)
     }
   }, [isProfissional, perfil])
+
+  // Resetar filtro de mês ao trocar profissional
+  useEffect(() => { setMesAtivo(null) }, [profissional])
 
   const filtro = {
     ...(dataInicio ? { dataInicio } : {}),
@@ -42,8 +46,13 @@ export default function Extrato() {
 
   const { data: linhas, isLoading } = useExtrato(profissional, filtroAtivo)
 
-  const total = (linhas ?? []).reduce((s, l) => s + l.valor_profissional, 0)
-  const pagas = (linhas ?? []).filter(l => l.status === 'pago').reduce((s, l) => s + l.valor_profissional, 0)
+  // N8: filtrar tabela pelo mês clicado no gráfico (mesAtivo = 'YYYY-MM')
+  const linhasFiltradas = mesAtivo
+    ? (linhas ?? []).filter(l => l.data_atendimento.startsWith(mesAtivo))
+    : (linhas ?? [])
+
+  const total = linhasFiltradas.reduce((s, l) => s + l.valor_profissional, 0)
+  const pagas = linhasFiltradas.filter(l => l.status === 'pago').reduce((s, l) => s + l.valor_profissional, 0)
 
   const profLabel   = PROFISSIONAIS.find(p => p.value === profissional)?.label ?? profissional
   const usuarioNome = perfil?.nome ?? 'Usuário'
@@ -144,8 +153,29 @@ export default function Extrato() {
             </div>
           </CardHeader>
           <CardBody>
+            {mesAtivo && (
+              <div className="px-4 pb-2 flex items-center gap-2 text-sm text-[#2E75B6]">
+                <span>Filtrando: <strong>{mensal?.find(m => m.isoMes === mesAtivo)?.mes ?? mesAtivo}</strong></span>
+                <button
+                  onClick={() => setMesAtivo(null)}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline"
+                >
+                  limpar
+                </button>
+              </div>
+            )}
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={mensal} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+              <LineChart
+                data={mensal}
+                margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => {
+                  if (e?.activePayload?.[0]) {
+                    const iso = (e.activePayload[0].payload as { isoMes: string }).isoMes
+                    setMesAtivo(prev => prev === iso ? null : iso)
+                  }
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="mes"
@@ -171,8 +201,12 @@ export default function Extrato() {
                   dataKey="valor"
                   stroke={cor}
                   strokeWidth={2.5}
-                  dot={{ r: 4, fill: cor, strokeWidth: 0 }}
-                  activeDot={{ r: 6 }}
+                  dot={(props) => {
+                    const { cx, cy, payload } = props as { cx: number; cy: number; payload: { isoMes: string } }
+                    const ativo = payload.isoMes === mesAtivo
+                    return <circle key={payload.isoMes} cx={cx} cy={cy} r={ativo ? 7 : 4} fill={cor} strokeWidth={ativo ? 3 : 0} stroke="#fff" />
+                  }}
+                  activeDot={{ r: 7 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -183,14 +217,22 @@ export default function Extrato() {
       {/* Tabela */}
       <Card>
         <CardHeader>
-          <h2 className="font-semibold text-[#1F3864]">
-            Lançamentos — {profLabel}
-            {filtroAtivo && (
-              <span className="ml-2 text-sm font-normal text-gray-400">
-                {dataInicio && fmt.data(dataInicio)} {dataInicio && dataFim && '→'} {dataFim && fmt.data(dataFim)}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="font-semibold text-[#1F3864]">
+              Lançamentos — {profLabel}
+              {filtroAtivo && (
+                <span className="ml-2 text-sm font-normal text-gray-400">
+                  {dataInicio && fmt.data(dataInicio)} {dataInicio && dataFim && '→'} {dataFim && fmt.data(dataFim)}
+                </span>
+              )}
+            </h2>
+            {mesAtivo && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-[#2E75B6] border border-blue-200">
+                {mensal?.find(m => m.isoMes === mesAtivo)?.mes ?? mesAtivo}
+                <button onClick={() => setMesAtivo(null)} className="hover:text-[#1F3864]">×</button>
               </span>
             )}
-          </h2>
+          </div>
         </CardHeader>
         <CardBody className="p-0">
           <div className="overflow-x-auto">
@@ -206,10 +248,12 @@ export default function Extrato() {
                 {isLoading && (
                   <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
                 )}
-                {!isLoading && (!linhas || linhas.length === 0) && (
-                  <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-400">Nenhum lançamento encontrado</td></tr>
+                {!isLoading && linhasFiltradas.length === 0 && (
+                  <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-400">
+                    {mesAtivo ? 'Nenhum lançamento neste mês' : 'Nenhum lançamento encontrado'}
+                  </td></tr>
                 )}
-                {(linhas ?? []).map(l => (
+                {linhasFiltradas.map(l => (
                   <tr key={l.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap">{fmt.data(l.data_atendimento)}</td>
                     <td className="px-4 py-3 font-medium">{l.paciente}</td>
@@ -236,7 +280,7 @@ export default function Extrato() {
                     </td>
                   </tr>
                 ))}
-                {(linhas ?? []).length > 0 && (
+                {linhasFiltradas.length > 0 && (
                   <tr className="bg-gray-50 font-semibold">
                     <td colSpan={5} className="px-4 py-3 text-right text-gray-500">Total</td>
                     <td className="px-4 py-3 text-[#1F3864]">{fmt.moeda(total)}</td>

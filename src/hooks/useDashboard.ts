@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getReceitaMensal, getInadimplenciaMensal, getKpiComparativo, getRankingProfissionais } from '@/services/dashboard'
+import { getReceitaMensal, getInadimplenciaMensal, getKpiComparativo, getRankingProfissionais, getMetasMensais } from '@/services/dashboard'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 
 export function useReceitaMensal() {
@@ -12,6 +12,10 @@ export function useInadimplenciaMensal() {
 
 export function useKpiComparativo() {
   return useQuery({ queryKey: ['kpi-comparativo'], queryFn: getKpiComparativo, refetchInterval: 60_000 })
+}
+
+export function useMetasMensais() {
+  return useQuery({ queryKey: ['metas-mensais'], queryFn: getMetasMensais, staleTime: 60_000 })
 }
 
 export function useRankingProfissionais(mes: Date) {

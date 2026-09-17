@@ -124,6 +124,31 @@ export async function listarRenegociadas(): Promise<ParcelaRenegociada[]> {
   }))
 }
 
+export async function cancelarParcela(id: string, motivo: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: parcela, error: e0 } = await supabase
+    .from('parcelas')
+    .select('status')
+    .eq('id', id)
+    .single()
+  if (e0) throw e0
+
+  const { error } = await supabase
+    .from('parcelas')
+    .update({ status: 'cancelado' })
+    .eq('id', id)
+  if (error) throw error
+
+  await supabase.from('parcelas_log').insert({
+    parcela_id:     id,
+    campo_alterado: 'status',
+    valor_anterior: parcela?.status ?? 'pendente',
+    valor_novo:     'cancelado',
+    observacoes:    motivo,
+    alterado_por:   user?.id ?? null,
+  })
+}
+
 export async function contarParcelasAlerta(): Promise<number> {
   const hoje  = new Date().toISOString().split('T')[0]
   const amanha = new Date(Date.now() + 86_400_000).toISOString().split('T')[0]

@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { FileDown, Pencil, CheckCircle, XCircle, Clock, History, FileText } from 'lucide-react'
-import { Card, Button, Badge, Modal, FiltroData } from '@/components/ui'
+import { useState, useEffect } from 'react'
+import { FileDown, Pencil, CheckCircle, XCircle, Clock, History, FileText, AlertTriangle } from 'lucide-react'
+import { Card, Button, Badge, Modal, FiltroData, Paginacao } from '@/components/ui'
 import {
   useRepasses, useEditarValorRepasse, useConciliarRepasse,
   useDesconciliarRepasse, useConciliarEmLote, useLogRepasse,
+  useRepassesAntigos,
 } from '@/hooks/useRepasses'
 import { fmt } from '@/lib/utils'
 import { gerarRelatorioRepasse, exportarRepasseExcel } from '@/services/relatorio'
@@ -88,6 +89,10 @@ export default function Repasses() {
   const [selecionados, setSelecionados]   = useState<Set<string>>(new Set())
 
   const [gerandoPDF, setGerandoPDF]       = useState(false)
+  const [pagina, setPagina]               = useState(1)
+  const POR_PAGINA = 50
+
+  useEffect(() => { setPagina(1) }, [abaAtiva, filtroStatus, filtroPaciente, filtroDataInicio, filtroDataFim, filtroRepasseInicio, filtroRepasseFim])
 
   const filtro = {
     tipo: abaAtiva,
@@ -100,10 +105,13 @@ export default function Repasses() {
   }
 
   const { data: repasses, isLoading } = useRepasses(filtro)
+  const { data: repassesAntigos }     = useRepassesAntigos()
   const editarValor      = useEditarValorRepasse()
   const conciliar        = useConciliarRepasse()
   const desconciliar     = useDesconciliarRepasse()
   const conciliarLote    = useConciliarEmLote()
+
+  const repassesPagina  = (repasses ?? []).slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
 
   const totalRepasse    = (repasses ?? []).reduce((s, r) => s + Number(r.valor_repasse), 0)
   const totalConciliado = (repasses ?? []).filter(r => r.status === 'conciliado').reduce((s, r) => s + Number(r.valor_repasse), 0)
@@ -194,6 +202,25 @@ export default function Repasses() {
           </Button>
         </div>
       </div>
+
+      {/* N5 — Alerta de repasses pendentes há mais de 30 dias */}
+      {repassesAntigos && repassesAntigos.count > 0 && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+          <AlertTriangle size={18} className="shrink-0 mt-0.5 text-amber-600" />
+          <div>
+            <span className="font-semibold">
+              {repassesAntigos.count} repasse{repassesAntigos.count !== 1 ? 's' : ''} pendente{repassesAntigos.count !== 1 ? 's' : ''} há mais de 30 dias
+            </span>
+            {repassesAntigos.tipos.length > 0 && (
+              <span className="ml-1 text-amber-700">
+                — profissional{repassesAntigos.tipos.length !== 1 ? 'is' : ''}:{' '}
+                {repassesAntigos.tipos.join(', ')}
+              </span>
+            )}
+            <p className="text-xs text-amber-600 mt-0.5">Verifique as abas acima e realize a conciliação.</p>
+          </div>
+        </div>
+      )}
 
       {/* Abas por profissional */}
       <div className="flex border-b border-gray-200">
@@ -292,8 +319,8 @@ export default function Repasses() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading && <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>}
-              {!isLoading && (!repasses || repasses.length === 0) && <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-400">Nenhum repasse encontrado</td></tr>}
-              {(repasses ?? []).map(r => {
+              {!isLoading && repassesPagina.length === 0 && <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-400">Nenhum repasse encontrado</td></tr>}
+              {repassesPagina.map(r => {
                 const isSel = selecionados.has(r.id)
                 const valAlterado = Number(r.valor_repasse) !== Number(r.valor_original)
                 return (
@@ -330,8 +357,8 @@ export default function Repasses() {
         {/* Versão mobile — cards */}
         <div className="md:hidden divide-y divide-gray-100">
           {isLoading && <p className="px-4 py-8 text-center text-gray-400 text-sm">Carregando...</p>}
-          {!isLoading && (!repasses || repasses.length === 0) && <p className="px-4 py-8 text-center text-gray-400 text-sm">Nenhum repasse encontrado</p>}
-          {(repasses ?? []).map(r => {
+          {!isLoading && repassesPagina.length === 0 && <p className="px-4 py-8 text-center text-gray-400 text-sm">Nenhum repasse encontrado</p>}
+          {repassesPagina.map(r => {
             const isSel = selecionados.has(r.id)
             const valAlterado = Number(r.valor_repasse) !== Number(r.valor_original)
             return (
@@ -391,6 +418,7 @@ export default function Repasses() {
             )
           })}
         </div>
+        <Paginacao total={repasses?.length ?? 0} pagina={pagina} porPagina={POR_PAGINA} onChange={setPagina} />
       </Card>
 
       {/* Modal: Editar Valor */}

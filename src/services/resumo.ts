@@ -79,21 +79,29 @@ export async function getResumoProfissional(filtro?: FiltroResumo): Promise<Resu
   return Object.entries(totais).map(([profissional, total]) => ({ profissional, total }))
 }
 
-export async function getKPIs() {
-  const [lanc, parc] = await Promise.all([
-    supabase.from('lancamentos').select('valor_total, status').neq('status', 'cancelado'), // Bug 3: exclui cancelados
+export async function getKPIs(filtro?: { dataInicio?: string; dataFim?: string }) {
+  let lancQuery = supabase.from('lancamentos').select('valor_total, status').neq('status', 'cancelado')
+  if (filtro?.dataInicio) lancQuery = lancQuery.gte('data_atendimento', filtro.dataInicio)
+  if (filtro?.dataFim)    lancQuery = lancQuery.lte('data_atendimento', filtro.dataFim)
+
+  const [lanc, parc, rep] = await Promise.all([
+    lancQuery,
     supabase.from('parcelas').select('valor_parcela, status, data_vencimento'),
+    supabase.from('repasses').select('valor_repasse, status').eq('status', 'nao_conciliado'),
   ])
 
   const lancamentos = lanc.data ?? []
   const parcelas    = parc.data ?? []
+  const repasses    = rep.data ?? []
   const hoje        = new Date().toISOString().split('T')[0]
 
   return {
-    totalAtendimentos: lancamentos.length,
-    receitaTotal:      lancamentos.reduce((s, l) => s + Number(l.valor_total), 0),
-    receitaPaga:       lancamentos.filter(l => l.status === 'pago').reduce((s, l) => s + Number(l.valor_total), 0),
-    parcelasVencidas:  parcelas.filter(p => p.status === 'pendente' && p.data_vencimento < hoje).length,
-    parcelasPendentes: parcelas.filter(p => p.status === 'pendente').length,
+    totalAtendimentos:     lancamentos.length,
+    receitaTotal:          lancamentos.reduce((s, l) => s + Number(l.valor_total), 0),
+    receitaPaga:           lancamentos.filter(l => l.status === 'pago').reduce((s, l) => s + Number(l.valor_total), 0),
+    parcelasVencidas:      parcelas.filter(p => p.status === 'pendente' && p.data_vencimento < hoje).length,
+    parcelasPendentes:     parcelas.filter(p => p.status === 'pendente').length,
+    repassesPendentesValor: repasses.reduce((s, r) => s + Number(r.valor_repasse), 0),
+    repassesPendentesCount: repasses.length,
   }
 }

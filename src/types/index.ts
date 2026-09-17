@@ -1,7 +1,7 @@
 export type ParceriaId = 'A' | 'B' | 'C'
 export type FormaPagamento = 'avista' | 'parcelado'
 export type StatusLancamento = 'pendente' | 'pago' | 'cancelado'
-export type StatusParcela = 'pendente' | 'pago' | 'vencido' | 'renegociada'
+export type StatusParcela = 'pendente' | 'pago' | 'vencido' | 'renegociada' | 'cancelado'
 
 export interface Parceria {
   id: ParceriaId
@@ -147,6 +147,7 @@ export interface ParceriaCompleta {
   psi1_pct: number
   psi2_pct: number
   ativo: boolean
+  meta_mensal?: number
 }
 
 export interface Profissional {
