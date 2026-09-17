@@ -8,6 +8,7 @@ export type TipoProfissional = 'camta' | 'medico' | 'psi1' | 'psi2'
 export interface UserPerfil {
   id: string
   nome: string
+  email?: string
   role: Role
   tipo_profissional: TipoProfissional | null
   ativo: boolean

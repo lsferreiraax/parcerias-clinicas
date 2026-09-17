@@ -21,7 +21,7 @@ const INIT_EDIT = { nome: '', role: 'gestor' as Role, tipo_profissional: '' as T
 export default function Usuarios() {
   const qc = useQueryClient()
   const [modalNovo, setModalNovo] = useState(false)
-  const [editando, setEditando]   = useState<UserPerfil | null>(null)
+  const [editando, setEditando]   = useState<(UserPerfil & { email?: string }) | null>(null)
   const [formNovo, setFormNovo]   = useState(INIT_NOVO)
   const [formEdit, setFormEdit]   = useState(INIT_EDIT)
   const [erro, setErro]           = useState('')
@@ -114,18 +114,19 @@ export default function Usuarios() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                 <tr>
-                  {['Nome', 'Perfil', 'Tipo', 'Status', 'Ações'].map(h => (
+                  {['Nome', 'E-mail', 'Perfil', 'Tipo', 'Status', 'Ações'].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {isLoading && (
-                  <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
+                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
                 )}
                 {(usuarios ?? []).map(u => (
                   <tr key={u.id} className={`hover:bg-gray-50 ${!u.ativo ? 'opacity-50' : ''}`}>
                     <td className="px-4 py-3 font-medium">{u.nome}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{u.email ?? '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ROLE_COLOR[u.role]}`}>
                         {ROLE_LABEL[u.role]}
@@ -197,6 +198,12 @@ export default function Usuarios() {
       {/* Modal — Editar */}
       <Modal open={!!editando} onClose={() => setEditando(null)} title="Editar Usuário">
         <div className="space-y-4">
+          {editando?.email && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1">E-mail</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg">{editando.email}</p>
+            </div>
+          )}
           <Input label="Nome" value={formEdit.nome}
             onChange={e => setFormEdit(f => ({ ...f, nome: e.target.value }))} />
           <Select label="Perfil" value={formEdit.role}

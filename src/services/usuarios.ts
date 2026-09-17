@@ -9,13 +9,9 @@ export interface NovoUsuario {
 }
 
 export async function listarUsuarios(): Promise<(UserPerfil & { email?: string })[]> {
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .order('nome')
-
+  const { data, error } = await supabase.rpc('listar_perfis_com_email')
   if (error) throw error
-  return data as UserPerfil[]
+  return (data ?? []) as (UserPerfil & { email?: string })[]
 }
 
 export async function convidarUsuario(dados: NovoUsuario): Promise<void> {
