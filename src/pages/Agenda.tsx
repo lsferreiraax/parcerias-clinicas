@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Calendar } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { useSessoes, useCriarSessao, useAtualizarSessao, useDeletarSessao } from '@/hooks/useSessoes'
 import { usePacientes } from '@/hooks/usePacientes'
 import {
@@ -34,7 +34,7 @@ export default function Agenda() {
   const [editando, setEditando] = useState<Sessao | null>(null)
   const [form, setForm] = useState<NovaSessao>(VAZIA)
   const [confirmarDeletar, setConfirmarDeletar] = useState<string | null>(null)
-  const [diaPreSelecionado, setDiaPreSelecionado] = useState<string>('')
+  const [, setDiaPreSelecionado] = useState<string>('')
 
   const { inicio, fim } = semanaDeData(semanaRef)
   const dias = diasDaSemana(inicio)
