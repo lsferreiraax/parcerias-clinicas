@@ -22,6 +22,7 @@ import Inadimplencia from '@/pages/Inadimplencia'
 import ContaCorrente from '@/pages/ContaCorrente'
 import Pacientes from '@/pages/Pacientes'
 import Agenda from '@/pages/Agenda'
+import Prontuario from '@/pages/Prontuario'
 import ModuloGuard from '@/components/auth/ModuloGuard'
 import './index.css'
 
@@ -96,6 +97,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     <Route path="agenda" element={
                       <ModuloGuard modulo="psicologia" roles={['admin', 'gestor', 'profissional']} redirect="/">
                         <Agenda />
+                      </ModuloGuard>
+                    } />
+                    <Route path="prontuario" element={
+                      <ModuloGuard modulo="psicologia" roles={['profissional']} redirect="/">
+                        <Prontuario />
                       </ModuloGuard>
                     } />
                     <Route path="configuracoes" element={

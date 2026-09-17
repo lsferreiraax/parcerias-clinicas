@@ -29,6 +29,7 @@ const nav: NavItem[] = [
   { to: '/conta-corrente',  label: 'Conta Corrente',  icon: Wallet,         roles: ['admin', 'gestor'] },
   { to: '/pacientes',       label: 'Pacientes',       icon: UserRound,      roles: ['admin', 'gestor', 'profissional'], modulo: 'psicologia' },
   { to: '/agenda',          label: 'Agenda',          icon: CalendarDays,   roles: ['admin', 'gestor', 'profissional'], modulo: 'psicologia' },
+  { to: '/prontuario',      label: 'Prontuário',      icon: ClipboardList,  roles: ['profissional'], modulo: 'psicologia' },
   { to: '/relatorios',      label: 'Relatórios',      icon: FileDown,       roles: ['admin', 'gestor'] },
   { to: '/usuarios',      label: 'Usuários',      icon: Users,           roles: ['admin'] },
   { to: '/configuracoes', label: 'Configurações', icon: Settings,        roles: ['admin'] },
