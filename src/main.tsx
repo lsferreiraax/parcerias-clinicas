@@ -19,6 +19,10 @@ import Configuracoes from '@/pages/Configuracoes'
 import Relatorios from '@/pages/Relatorios'
 import Repasses from '@/pages/Repasses'
 import Inadimplencia from '@/pages/Inadimplencia'
+import ContaCorrente from '@/pages/ContaCorrente'
+import Pacientes from '@/pages/Pacientes'
+import Agenda from '@/pages/Agenda'
+import ModuloGuard from '@/components/auth/ModuloGuard'
 import './index.css'
 
 const qc = new QueryClient({
@@ -78,6 +82,21 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                       <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
                         <Relatorios />
                       </RoleGuard>
+                    } />
+                    <Route path="conta-corrente" element={
+                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                        <ContaCorrente />
+                      </RoleGuard>
+                    } />
+                    <Route path="pacientes" element={
+                      <ModuloGuard modulo="psicologia" roles={['admin', 'gestor', 'profissional']} redirect="/">
+                        <Pacientes />
+                      </ModuloGuard>
+                    } />
+                    <Route path="agenda" element={
+                      <ModuloGuard modulo="psicologia" roles={['admin', 'gestor', 'profissional']} redirect="/">
+                        <Agenda />
+                      </ModuloGuard>
                     } />
                     <Route path="configuracoes" element={
                       <RoleGuard roles={['admin']} redirect="/">
