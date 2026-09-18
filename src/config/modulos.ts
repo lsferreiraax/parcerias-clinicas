@@ -1,7 +1,7 @@
 // Controle de acesso por módulo em fase beta.
 // Adicione o e-mail do usuário à lista do módulo para liberar o acesso.
 export const ACESSO_MODULOS: Record<string, string[]> = {
-  psicologia: ['leandro.ferreira@bit.com.br'],
+  psicologia: ['leandro.ferreira@bit.com.br', 'lsferreiraax@outlook.com'],
 }
 
 export function temAcessoModulo(modulo: string, email?: string | null): boolean {
