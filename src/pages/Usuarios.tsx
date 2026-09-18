@@ -97,7 +97,7 @@ export default function Usuarios() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F3864]">Usuários</h1>
+          <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Usuários</h1>
           <p className="text-gray-500 text-sm mt-1">Gerencie os acessos ao sistema</p>
         </div>
         <Button onClick={() => { setModalNovo(true); setErro('') }}>

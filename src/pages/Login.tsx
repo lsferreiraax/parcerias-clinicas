@@ -64,7 +64,7 @@ export default function Login() {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8">
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🏥</div>
-          <h1 className="text-xl font-bold text-[#1F3864]">Parcerias Clínicas</h1>
+          <h1 className="text-xl font-bold text-[#1F3864] dark:text-blue-300">Parcerias Clínicas</h1>
           <p className="text-sm text-gray-500 mt-1">Sistema de Rateio</p>
         </div>
 

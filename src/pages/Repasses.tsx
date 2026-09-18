@@ -182,7 +182,7 @@ export default function Repasses() {
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F3864]">Repasses</h1>
+          <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Repasses</h1>
           <p className="text-gray-500 text-sm mt-1">Controle de repasse financeiro por profissional</p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -289,7 +289,7 @@ export default function Repasses() {
       {/* KPIs da aba */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total',        value: totalRepasse,    color: 'text-[#1F3864]' },
+          { label: 'Total',        value: totalRepasse,    color: 'text-[#1F3864] dark:text-blue-300' },
           { label: 'Conciliado',   value: totalConciliado, color: 'text-green-700' },
           { label: 'Não Conciliado', value: totalPendente, color: 'text-yellow-700' },
         ].map(({ label, value, color }) => (
@@ -310,7 +310,7 @@ export default function Repasses() {
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
                 <th className="px-4 py-3 w-10">
-                  <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864]" title="Selecionar todos não conciliados" />
+                  <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} className="rounded border-gray-300 text-[#1F3864] dark:text-blue-300 focus:ring-[#1F3864]" title="Selecionar todos não conciliados" />
                 </th>
                 {['Dt. Atendimento','Paciente','Parceria','Dt. Pagamento','Vl. Original','Vl. Repasse','Dt. Repasse','Situação','Ações'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap">{h}</th>
@@ -326,7 +326,7 @@ export default function Repasses() {
                 return (
                   <tr key={r.id} className={`hover:bg-gray-50 ${isSel ? 'bg-blue-50' : ''}`}>
                     <td className="px-4 py-3">
-                      <input type="checkbox" checked={isSel} disabled={r.status === 'conciliado'} onChange={() => toggleSelecionado(r.id)} className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864] disabled:opacity-30 disabled:cursor-not-allowed" />
+                      <input type="checkbox" checked={isSel} disabled={r.status === 'conciliado'} onChange={() => toggleSelecionado(r.id)} className="rounded border-gray-300 text-[#1F3864] dark:text-blue-300 focus:ring-[#1F3864] disabled:opacity-30 disabled:cursor-not-allowed" />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">{r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—'}</td>
                     <td className="px-4 py-3 font-medium">{r.lancamentos?.paciente ?? '—'}</td>
@@ -365,7 +365,7 @@ export default function Repasses() {
               <div key={r.id} className={`p-4 space-y-3 ${isSel ? 'bg-blue-50' : ''}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <input type="checkbox" checked={isSel} disabled={r.status === 'conciliado'} onChange={() => toggleSelecionado(r.id)} className="rounded border-gray-300 text-[#1F3864] disabled:opacity-30 shrink-0" />
+                    <input type="checkbox" checked={isSel} disabled={r.status === 'conciliado'} onChange={() => toggleSelecionado(r.id)} className="rounded border-gray-300 text-[#1F3864] dark:text-blue-300 disabled:opacity-30 shrink-0" />
                     <span className="font-semibold text-gray-900 truncate">{r.lancamentos?.paciente ?? '—'}</span>
                   </div>
                   <StatusBadge status={r.status} />

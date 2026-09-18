@@ -25,7 +25,7 @@ export default function RenegociarParcela({ parcela, paciente, onFechar }: Props
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 space-y-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#1F3864]">Renegociar Parcela</h2>
+          <h2 className="text-lg font-bold text-[#1F3864] dark:text-blue-300">Renegociar Parcela</h2>
           <button onClick={onFechar} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} /></button>
         </div>
 

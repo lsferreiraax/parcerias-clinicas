@@ -94,7 +94,7 @@ export default function Extrato() {
       {/* Cabeçalho */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F3864]">Extrato por Profissional</h1>
+          <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Extrato por Profissional</h1>
           <p className="text-gray-500 text-sm mt-1">Valores recebidos por atendimento</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -143,7 +143,7 @@ export default function Extrato() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <h2 className="font-semibold text-[#1F3864]">Evolução Mensal — {profLabel}</h2>
+              <h2 className="font-semibold text-[#1F3864] dark:text-blue-300">Evolução Mensal — {profLabel}</h2>
               <div className="flex gap-4 text-sm text-gray-500">
                 <span>Média: <strong className="text-gray-700">{fmt.moeda(mediaMensal)}</strong></span>
                 {melhorMes && melhorMes.valor > 0 && (
@@ -218,7 +218,7 @@ export default function Extrato() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="font-semibold text-[#1F3864]">
+            <h2 className="font-semibold text-[#1F3864] dark:text-blue-300">
               Lançamentos — {profLabel}
               {filtroAtivo && (
                 <span className="ml-2 text-sm font-normal text-gray-400">
@@ -229,7 +229,7 @@ export default function Extrato() {
             {mesAtivo && (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-[#2E75B6] border border-blue-200">
                 {mensal?.find(m => m.isoMes === mesAtivo)?.mes ?? mesAtivo}
-                <button onClick={() => setMesAtivo(null)} className="hover:text-[#1F3864]">×</button>
+                <button onClick={() => setMesAtivo(null)} className="hover:text-[#1F3864] dark:text-blue-300">×</button>
               </span>
             )}
           </div>
@@ -262,7 +262,7 @@ export default function Extrato() {
                     </td>
                     <td className="px-4 py-3">{l.forma_pagamento === 'avista' ? 'À Vista' : 'Parcelado'}</td>
                     <td className="px-4 py-3">{fmt.moeda(l.valor_total)}</td>
-                    <td className="px-4 py-3 font-bold text-[#1F3864]">{fmt.moeda(l.valor_profissional)}</td>
+                    <td className="px-4 py-3 font-bold text-[#1F3864] dark:text-blue-300">{fmt.moeda(l.valor_profissional)}</td>
                     <td className="px-4 py-3">
                       <Badge variant={l.status === 'pago' ? 'success' : l.status === 'cancelado' ? 'danger' : 'warning'}>
                         {l.status}
@@ -272,7 +272,7 @@ export default function Extrato() {
                       <button
                         onClick={() => gerarComprovante(l, profissional, usuarioNome)}
                         title="Gerar comprovante PDF"
-                        className="flex items-center gap-1 text-xs text-[#2E75B6] hover:text-[#1F3864] font-medium transition-colors"
+                        className="flex items-center gap-1 text-xs text-[#2E75B6] hover:text-[#1F3864] dark:text-blue-300 font-medium transition-colors"
                       >
                         <FileText size={14} />
                         Comprovante
@@ -283,7 +283,7 @@ export default function Extrato() {
                 {linhasFiltradas.length > 0 && (
                   <tr className="bg-gray-50 font-semibold">
                     <td colSpan={5} className="px-4 py-3 text-right text-gray-500">Total</td>
-                    <td className="px-4 py-3 text-[#1F3864]">{fmt.moeda(total)}</td>
+                    <td className="px-4 py-3 text-[#1F3864] dark:text-blue-300">{fmt.moeda(total)}</td>
                     <td /><td />
                   </tr>
                 )}

@@ -114,7 +114,7 @@ export default function Parcelas() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F3864]">Controle de Parcelas</h1>
+          <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Controle de Parcelas</h1>
           <p className="text-gray-500 text-sm mt-1">Acompanhe e baixe parcelas dos atendimentos parcelados</p>
         </div>
         <div className="flex items-center gap-2">

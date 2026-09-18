@@ -84,7 +84,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F3864]">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Dashboard</h1>
           <p className="text-gray-500 text-sm mt-1">Visão geral das parcerias clínicas</p>
         </div>
         <FiltroData
@@ -129,7 +129,7 @@ export default function Dashboard() {
         <Card>
           <div className="p-4 space-y-1">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Receita do Mês</p>
-            <p className="text-xl font-bold text-[#1F3864]">{fmt.moeda(kpiComp?.receitaMes ?? 0)}</p>
+            <p className="text-xl font-bold text-[#1F3864] dark:text-blue-300">{fmt.moeda(kpiComp?.receitaMes ?? 0)}</p>
             <div className="flex items-center gap-2">
               <BadgeVariacao pct={varReceita} />
               <span className="text-xs text-gray-400">vs mês anterior</span>
@@ -139,7 +139,7 @@ export default function Dashboard() {
         <Card>
           <div className="p-4 space-y-1">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Ticket Médio</p>
-            <p className="text-xl font-bold text-[#1F3864]">{fmt.moeda(kpiComp?.ticketMedio ?? 0)}</p>
+            <p className="text-xl font-bold text-[#1F3864] dark:text-blue-300">{fmt.moeda(kpiComp?.ticketMedio ?? 0)}</p>
             <div className="flex items-center gap-2">
               <BadgeVariacao pct={varTicket} />
               <span className="text-xs text-gray-400">vs mês anterior</span>
@@ -149,7 +149,7 @@ export default function Dashboard() {
         <Card>
           <div className="p-4 space-y-1">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Atendimentos/Mês</p>
-            <p className="text-xl font-bold text-[#1F3864]">{kpiComp?.atendimentosMes ?? 0}</p>
+            <p className="text-xl font-bold text-[#1F3864] dark:text-blue-300">{kpiComp?.atendimentosMes ?? 0}</p>
             <p className="text-xs text-gray-400">mês atual</p>
           </div>
         </Card>
@@ -166,7 +166,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Receita mensal 12 meses */}
         <Card>
-          <CardHeader><h2 className="font-semibold text-[#1F3864]">Receita Mensal (12 meses)</h2></CardHeader>
+          <CardHeader><h2 className="font-semibold text-[#1F3864] dark:text-blue-300">Receita Mensal (12 meses)</h2></CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={receitaMensal ?? []} margin={{ top: 8 }}>
@@ -174,7 +174,7 @@ export default function Dashboard() {
                 <YAxis tickFormatter={v => `R$${(Number(v) / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(v: number) => fmt.moeda(v)} />
                 <Legend />
-                <Bar dataKey="parcelaA" name="Parceria A" stackId="a" fill="#1F3864" radius={[0,0,0,0]} />
+                <Bar dataKey="parcelaA" name="Parceria A" stackId="a" fill="#60A5FA" radius={[0,0,0,0]} />
                 <Bar dataKey="parcelaB" name="Parceria B" stackId="a" fill="#2E75B6" radius={[0,0,0,0]} />
                 <Bar dataKey="parcelaC" name="Parceria C" stackId="a" fill="#27AE60" radius={[3,3,0,0]} />
               </BarChart>
@@ -184,11 +184,11 @@ export default function Dashboard() {
 
         {/* Inadimplência */}
         <Card>
-          <CardHeader><h2 className="font-semibold text-[#1F3864]">Inadimplência (12 meses)</h2></CardHeader>
+          <CardHeader><h2 className="font-semibold text-[#1F3864] dark:text-blue-300">Inadimplência (12 meses)</h2></CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={inadimplencia ?? []} margin={{ top: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.25)" />
                 <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
                 <YAxis yAxisId="qtd" tick={{ fontSize: 10 }} />
                 <YAxis yAxisId="pct" orientation="right" tickFormatter={v => `${v}%`} tick={{ fontSize: 10 }} />
@@ -207,7 +207,7 @@ export default function Dashboard() {
       {metas && metas.some(m => m.meta_mensal > 0) && (
         <Card>
           <CardHeader>
-            <h2 className="font-semibold text-[#1F3864]">Metas Mensais por Parceria</h2>
+            <h2 className="font-semibold text-[#1F3864] dark:text-blue-300">Metas Mensais por Parceria</h2>
             <p className="text-xs text-gray-400 mt-0.5">Realizado vs meta em {format(new Date(), 'MMMM/yyyy', { locale: ptBR })}</p>
           </CardHeader>
           <CardBody>
@@ -252,7 +252,7 @@ export default function Dashboard() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-[#1F3864]">Ranking de Profissionais</h2>
+            <h2 className="font-semibold text-[#1F3864] dark:text-blue-300">Ranking de Profissionais</h2>
             <SeletorMes value={mesSelecionado} onChange={setMesSelecionado} />
           </div>
           <p className="text-xs text-gray-400 mt-0.5">{iniMes} — {fimMes}</p>

@@ -57,7 +57,7 @@ export default function Resumo() {
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F3864]">Resumo Financeiro</h1>
+          <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Resumo Financeiro</h1>
           <p className="text-gray-500 text-sm mt-1">Consolidado de rateio por parceria e profissional</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -120,7 +120,7 @@ export default function Resumo() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader><h2 className="font-semibold text-[#1F3864]">Consolidado por Profissional</h2></CardHeader>
+          <CardHeader><h2 className="font-semibold text-[#1F3864] dark:text-blue-300">Consolidado por Profissional</h2></CardHeader>
           <CardBody className="space-y-3">
             {(profissional ?? []).map(p => (
               <div key={p.profissional} className="flex items-center justify-between">
@@ -141,13 +141,13 @@ export default function Resumo() {
             ))}
             <div className="border-t pt-3 flex justify-between font-bold">
               <span>Total Geral</span>
-              <span className="text-[#1F3864]">{fmt.moeda(totalGeral)}</span>
+              <span className="text-[#1F3864] dark:text-blue-300">{fmt.moeda(totalGeral)}</span>
             </div>
           </CardBody>
         </Card>
 
         <Card>
-          <CardHeader><h2 className="font-semibold text-[#1F3864]">Comparativo por Parceria</h2></CardHeader>
+          <CardHeader><h2 className="font-semibold text-[#1F3864] dark:text-blue-300">Comparativo por Parceria</h2></CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={dadosBarras} margin={{ top: 8 }}>

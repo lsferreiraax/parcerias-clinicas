@@ -94,7 +94,7 @@ export default function ContaCorrente() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F3864]">Conta Corrente</h1>
+          <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Conta Corrente</h1>
           <p className="text-gray-500 text-sm mt-1">Débitos e créditos entre parcerias — compensação mensal</p>
         </div>
         <Button onClick={() => setModalOpen(true)}>
@@ -190,7 +190,7 @@ export default function ContaCorrente() {
       {/* Tabela de movimentações */}
       <Card>
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-          <Wallet size={18} className="text-[#1F3864]" />
+          <Wallet size={18} className="text-[#1F3864] dark:text-blue-300" />
           <h2 className="font-semibold text-gray-800">Extrato — {mesLabel}</h2>
           <span className="ml-auto text-sm text-gray-400">{movimentacoes.length} movimentação(ões)</span>
         </div>

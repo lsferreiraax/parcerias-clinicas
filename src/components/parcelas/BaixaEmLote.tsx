@@ -12,7 +12,7 @@ export default function BaixaEmLote({ ids, valorTotal, onConfirmar, onCancelar, 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 space-y-5">
-        <h2 className="text-lg font-bold text-[#1F3864]">Confirmar Baixa em Lote</h2>
+        <h2 className="text-lg font-bold text-[#1F3864] dark:text-blue-300">Confirmar Baixa em Lote</h2>
 
         <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-4 space-y-1">
           <p className="text-sm text-green-800">

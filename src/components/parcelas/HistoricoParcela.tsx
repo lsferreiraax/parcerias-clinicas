@@ -20,7 +20,7 @@ export default function HistoricoParcela({ parcelaId, paciente, onFechar }: Prop
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
-            <h2 className="text-lg font-bold text-[#1F3864]">Histórico de Alterações</h2>
+            <h2 className="text-lg font-bold text-[#1F3864] dark:text-blue-300">Histórico de Alterações</h2>
             <p className="text-sm text-gray-500">{paciente}</p>
           </div>
           <button onClick={onFechar} className="p-1.5 rounded-lg hover:bg-gray-100">

@@ -35,7 +35,7 @@ function MeioPagamentoCheckboxes({ value, onChange }: { value: string[]; onChang
               key={v}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer select-none text-sm transition-colors ${
                 checked
-                  ? 'border-[#1F3864] bg-[#1F3864]/5 text-[#1F3864] font-medium'
+                  ? 'border-[#1F3864] bg-[#1F3864]/5 text-[#1F3864] dark:text-blue-300 font-medium'
                   : 'border-gray-300 text-gray-600 hover:border-gray-400'
               }`}
             >
@@ -325,7 +325,7 @@ export default function Lancamentos() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F3864]">Lançamentos</h1>
+          <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Lançamentos</h1>
           <p className="text-gray-500 text-sm mt-1">Registro de atendimentos e rateio automático</p>
         </div>
         <div className="flex gap-2">
@@ -389,7 +389,7 @@ export default function Lancamentos() {
               <tr>
                 {podeEditar && (
                   <th className="px-4 py-3 w-10">
-                    <input type="checkbox" checked={todosSelecionados} ref={el => { if (el) el.indeterminate = algunsSelecionados && !todosSelecionados }} onChange={toggleTodos} className="rounded border-gray-300 text-[#1F3864] focus:ring-[#1F3864]" title="Selecionar todos (exceto pagos)" />
+                    <input type="checkbox" checked={todosSelecionados} ref={el => { if (el) el.indeterminate = algunsSelecionados && !todosSelecionados }} onChange={toggleTodos} className="rounded border-gray-300 text-[#1F3864] dark:text-blue-300 focus:ring-[#1F3864]" title="Selecionar todos (exceto pagos)" />
                   </th>
                 )}
                 {['Data','Paciente','Parceria','Pagamento','Meio','Valor Total','Camta','Médico','Psi1','Psi2','Dt. Pagamento','Status','Ações'].map(h => (
