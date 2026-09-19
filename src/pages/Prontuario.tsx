@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Plus, FileText, Trash2, Edit2, Download, Search, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { useProntuarios, useCriarProntuario, useAtualizarProntuario, useDeletarProntuario } from '@/hooks/useProntuario'
 import { useBuscarPacientes, usePacientes } from '@/hooks/usePacientes'
@@ -7,6 +7,7 @@ import {
   TIPO_PRONTUARIO, formatarDataProntuario, labelTipo, corTipo,
 } from '@/services/prontuario'
 import type { Paciente } from '@/services/pacientes'
+import { registrarAcessoProntuario } from '@/services/consentimentos'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 
@@ -79,6 +80,9 @@ function exportarPDF(paciente: Paciente | undefined, registros: Prontuario[]) {
   })
 
   doc.save(`prontuario_${nome.replace(/\s+/g, '_').toLowerCase()}.pdf`)
+  if (paciente?.id) {
+    registrarAcessoProntuario(paciente.id, 'exportou', null, { total_registros: registros.length })
+  }
 }
 
 function ModalProntuario({
@@ -333,14 +337,27 @@ export default function Prontuario() {
     setBuscaPaciente('')
   }
 
+  useEffect(() => {
+    if (pacienteSelecionado?.id) {
+      registrarAcessoProntuario(pacienteSelecionado.id, 'visualizou')
+    }
+  }, [pacienteSelecionado?.id])
+
   const handleSalvar = (dados: NovoProntuario) => {
     if (editando) {
       atualizar.mutate({ id: editando.id, dados }, {
-        onSuccess: () => { setModalAberto(false); setEditando(null) }
+        onSuccess: () => {
+          registrarAcessoProntuario(dados.paciente_id, 'editou', editando.id)
+          setModalAberto(false)
+          setEditando(null)
+        },
       })
     } else {
       criar.mutate(dados, {
-        onSuccess: () => setModalAberto(false)
+        onSuccess: (novo) => {
+          registrarAcessoProntuario(dados.paciente_id, 'criou', novo.id)
+          setModalAberto(false)
+        },
       })
     }
   }

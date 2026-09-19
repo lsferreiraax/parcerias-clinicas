@@ -9,6 +9,8 @@ export interface Paciente {
   data_nasc?: string
   observacao?: string
   ativo: boolean
+  anonimizado?: boolean
+  anonimizado_em?: string | null
   origem_id?: string
   created_at: string
   updated_at: string
