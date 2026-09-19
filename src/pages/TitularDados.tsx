@@ -1,10 +1,16 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Shield, Search, Download, Trash2, CheckCircle, XCircle, Plus } from 'lucide-react'
+import { Shield, Search, Download, Trash2, CheckCircle, XCircle, Plus, Clock, AlertTriangle, Edit3, Save } from 'lucide-react'
 import { buscarDadosTitular, exportarDadosTitularJSON, anonimizarPaciente } from '@/services/titularDados'
 import { registrarConsentimento, revogarConsentimento } from '@/services/consentimentos'
+import {
+  listarSolicitacoes, criarSolicitacao, responderSolicitacao,
+  listarPoliticasRetencao, atualizarPoliticaRetencao,
+  TIPOS_SOLICITACAO, STATUS_SOLICITACAO,
+} from '@/services/solicitacoesTitular'
 import { useBuscarPacientes } from '@/hooks/usePacientes'
 import type { TipoConsentimento } from '@/services/consentimentos'
+import type { TipoSolicitacao, StatusSolicitacao } from '@/services/solicitacoesTitular'
 import type { Paciente } from '@/services/pacientes'
 
 const TIPOS_CONSENTIMENTO: { value: TipoConsentimento; label: string; desc: string }[] = [
@@ -14,10 +20,19 @@ const TIPOS_CONSENTIMENTO: { value: TipoConsentimento; label: string; desc: stri
   { value: 'geral',        label: 'Geral',        desc: 'Política de privacidade geral' },
 ]
 
-function BadgeStatus({ ativo }: { ativo: boolean }) {
+type Aba = 'dados' | 'consentimentos' | 'solicitacoes' | 'log' | 'retencao'
+
+function BadgeConsentimento({ ativo }: { ativo: boolean }) {
   return ativo
     ? <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"><CheckCircle size={11} />Ativo</span>
     : <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"><XCircle size={11} />Revogado</span>
+}
+
+function diasRestantes(prazo: string) {
+  const dias = Math.ceil((new Date(prazo).getTime() - Date.now()) / 86400000)
+  if (dias < 0) return <span className="text-red-600 dark:text-red-400 font-medium">Vencido</span>
+  if (dias <= 3) return <span className="text-amber-600 dark:text-amber-400 font-medium">{dias}d restantes</span>
+  return <span className="text-gray-500 dark:text-gray-400">{dias}d restantes</span>
 }
 
 export default function TitularDados() {
@@ -25,8 +40,16 @@ export default function TitularDados() {
   const [busca, setBusca] = useState('')
   const [paciente, setPaciente] = useState<Paciente | null>(null)
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
+  const [abaAtiva, setAbaAtiva] = useState<Aba>('dados')
   const [confirmarAnon, setConfirmarAnon] = useState(false)
-  const [novoTipo, setNovoTipo] = useState<TipoConsentimento>('prontuario')
+  const [novoTipoConsent, setNovoTipoConsent] = useState<TipoConsentimento>('prontuario')
+  const [novoTipoSolic, setNovoTipoSolic] = useState<TipoSolicitacao>('acesso')
+  const [descSolic, setDescSolic] = useState('')
+  const [respondendo, setRespondendo] = useState<string | null>(null)
+  const [respostaTexto, setRespostaTexto] = useState('')
+  const [statusResposta, setStatusResposta] = useState<StatusSolicitacao>('concluido')
+  const [editandoRetencao, setEditandoRetencao] = useState<string | null>(null)
+  const [prazoEdit, setPrazoEdit] = useState('')
 
   const { data: sugestoes = [] } = useBuscarPacientes(busca)
 
@@ -36,8 +59,19 @@ export default function TitularDados() {
     enabled: !!paciente?.id,
   })
 
+  const { data: solicitacoes = [] } = useQuery({
+    queryKey: ['solicitacoes', paciente?.id],
+    queryFn: () => listarSolicitacoes(paciente!.id),
+    enabled: !!paciente?.id,
+  })
+
+  const { data: politicas = [] } = useQuery({
+    queryKey: ['politicas-retencao'],
+    queryFn: listarPoliticasRetencao,
+  })
+
   const addConsentimento = useMutation({
-    mutationFn: () => registrarConsentimento({ paciente_id: paciente!.id, tipo: novoTipo }),
+    mutationFn: () => registrarConsentimento({ paciente_id: paciente!.id, tipo: novoTipoConsent }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['titular-dados', paciente?.id] }),
   })
 
@@ -56,27 +90,51 @@ export default function TitularDados() {
     },
   })
 
-  const sugestoesVisiveis = busca.length >= 2 ? sugestoes.slice(0, 8) : []
+  const novaSolicitacao = useMutation({
+    mutationFn: () => criarSolicitacao({ paciente_id: paciente!.id, tipo: novoTipoSolic, descricao: descSolic || undefined }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['solicitacoes', paciente?.id] }); setDescSolic('') },
+  })
 
-  const selecionarPaciente = (p: Paciente) => {
-    setPaciente(p)
-    setBusca(p.nome)
-    setMostrarSugestoes(false)
-  }
+  const responder = useMutation({
+    mutationFn: () => responderSolicitacao(respondendo!, statusResposta, respostaTexto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['solicitacoes', paciente?.id] })
+      setRespondendo(null)
+      setRespostaTexto('')
+    },
+  })
+
+  const salvarRetencao = useMutation({
+    mutationFn: ({ id, meses }: { id: string; meses: number }) => atualizarPoliticaRetencao(id, meses),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['politicas-retencao'] }); setEditandoRetencao(null) },
+  })
+
+  const sugestoesVisiveis = busca.length >= 2 ? sugestoes.slice(0, 8) : []
+  const selecionarPaciente = (p: Paciente) => { setPaciente(p); setBusca(p.nome); setMostrarSugestoes(false) }
+
+  const abas: { id: Aba; label: string }[] = [
+    { id: 'dados',          label: 'Dados Pessoais' },
+    { id: 'consentimentos', label: 'Consentimentos' },
+    { id: 'solicitacoes',   label: 'Solicitações' },
+    { id: 'log',            label: 'Log de Acessos' },
+    { id: 'retencao',       label: 'Retenção' },
+  ]
+
+  const pendentes = solicitacoes.filter(s => s.status === 'pendente').length
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <Shield size={22} className="text-teal-600 dark:text-teal-400" />
           Titular de Dados (LGPD)
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Gerencie consentimentos e consulte o log de acesso conforme Art. 8 e 37 da LGPD
+          Consentimentos, solicitações e retenção conforme Art. 8, 18 e 37 da LGPD
         </p>
       </div>
 
-      {/* Busca de paciente */}
+      {/* Busca */}
       <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-4">
         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Titular</label>
         <div className="relative">
@@ -92,13 +150,9 @@ export default function TitularDados() {
           {mostrarSugestoes && sugestoesVisiveis.length > 0 && (
             <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
               {sugestoesVisiveis.map(p => (
-                <button
-                  key={p.id}
-                  onMouseDown={() => selecionarPaciente(p)}
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                >
-                  {p.nome}
-                  {p.cpf && <span className="ml-2 text-xs text-gray-400">CPF: {p.cpf}</span>}
+                <button key={p.id} onMouseDown={() => selecionarPaciente(p)}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200">
+                  {p.nome}{p.cpf && <span className="ml-2 text-xs text-gray-400">CPF: {p.cpf}</span>}
                 </button>
               ))}
             </div>
@@ -106,172 +160,370 @@ export default function TitularDados() {
         </div>
       </div>
 
-      {isLoading && (
-        <div className="text-center py-10 text-gray-400 text-sm">Carregando dados do titular...</div>
+      {/* Abas retenção (independe de paciente) */}
+      {!paciente && (
+        <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b dark:border-gray-700">
+            <h2 className="font-semibold text-gray-800 dark:text-gray-100">Políticas de Retenção de Dados</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Art. 15 e 16 LGPD — prazos mínimos legais</p>
+          </div>
+          <div className="divide-y dark:divide-gray-700">
+            {politicas.map(p => (
+              <div key={p.id} className="flex items-center justify-between px-5 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-100 capitalize">{p.tipo_dado.replace('_', ' ')}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{p.base_legal}</p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0 ml-4">
+                  {editandoRetencao === p.id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={prazoEdit}
+                        onChange={e => setPrazoEdit(e.target.value)}
+                        className="w-20 border dark:border-gray-600 rounded-lg px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        min={1}
+                      />
+                      <span className="text-xs text-gray-500">meses</span>
+                      <button
+                        onClick={() => salvarRetencao.mutate({ id: p.id, meses: Number(prazoEdit) })}
+                        disabled={salvarRetencao.isPending}
+                        className="p-1.5 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg"
+                      >
+                        <Save size={15} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold text-teal-700 dark:text-teal-400">{p.prazo_meses} meses</span>
+                      <button
+                        onClick={() => { setEditandoRetencao(p.id); setPrazoEdit(String(p.prazo_meses)) }}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
-      {titular && (
+      {isLoading && <div className="text-center py-10 text-gray-400 text-sm">Carregando dados do titular...</div>}
+
+      {paciente && titular && (
         <>
-          {/* Dados pessoais */}
-          <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-800 dark:text-gray-100">Dados Pessoais</h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => exportarDadosTitularJSON(titular)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-600 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
-                >
-                  <Download size={13} />
-                  Exportar JSON
-                </button>
-                {!titular.paciente.anonimizado && (
-                  <button
-                    onClick={() => setConfirmarAnon(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                  >
-                    <Trash2 size={13} />
-                    Anonimizar
-                  </button>
+          {/* Abas */}
+          <div className="flex gap-1 border-b dark:border-gray-700 overflow-x-auto">
+            {abas.map(a => (
+              <button
+                key={a.id}
+                onClick={() => setAbaAtiva(a.id)}
+                className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors relative ${
+                  abaAtiva === a.id
+                    ? 'text-teal-700 dark:text-teal-400 border-b-2 border-teal-600 dark:border-teal-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                {a.label}
+                {a.id === 'solicitacoes' && pendentes > 0 && (
+                  <span className="ml-1.5 inline-flex items-center justify-center text-xs font-bold w-4 h-4 rounded-full bg-amber-500 text-white">{pendentes}</span>
                 )}
-              </div>
-            </div>
-            {titular.paciente.anonimizado && (
-              <div className="mb-3 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
-                Titular anonimizado em {titular.paciente.anonimizado_em ? new Date(titular.paciente.anonimizado_em).toLocaleDateString('pt-BR') : '—'}
-              </div>
-            )}
-            <dl className="grid grid-cols-2 gap-3 text-sm">
-              {[
-                ['Nome', titular.paciente.nome],
-                ['CPF', titular.paciente.cpf ?? '—'],
-                ['E-mail', titular.paciente.email ?? '—'],
-                ['Telefone', titular.paciente.telefone ?? '—'],
-                ['Nascimento', titular.paciente.data_nasc ? new Date(titular.paciente.data_nasc + 'T12:00:00').toLocaleDateString('pt-BR') : '—'],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt className="text-xs text-gray-500 dark:text-gray-400">{label}</dt>
-                  <dd className="font-medium text-gray-800 dark:text-gray-100">{value}</dd>
+              </button>
+            ))}
+          </div>
+
+          {/* Aba: Dados Pessoais */}
+          {abaAtiva === 'dados' && (
+            <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold text-gray-800 dark:text-gray-100">Dados Pessoais</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => exportarDadosTitularJSON(titular)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-600 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
+                  >
+                    <Download size={13} />Exportar JSON
+                  </button>
+                  {!titular.paciente.anonimizado && (
+                    <button
+                      onClick={() => setConfirmarAnon(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      <Trash2 size={13} />Anonimizar
+                    </button>
+                  )}
                 </div>
-              ))}
-            </dl>
-          </div>
+              </div>
+              {titular.paciente.anonimizado && (
+                <div className="mb-3 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
+                  Titular anonimizado em {titular.paciente.anonimizado_em ? new Date(titular.paciente.anonimizado_em).toLocaleDateString('pt-BR') : '—'}
+                </div>
+              )}
+              <dl className="grid grid-cols-2 gap-3 text-sm">
+                {[
+                  ['Nome', titular.paciente.nome],
+                  ['CPF', titular.paciente.cpf ?? '—'],
+                  ['E-mail', titular.paciente.email ?? '—'],
+                  ['Telefone', titular.paciente.telefone ?? '—'],
+                  ['Nascimento', titular.paciente.data_nasc ? new Date(titular.paciente.data_nasc + 'T12:00:00').toLocaleDateString('pt-BR') : '—'],
+                  ['Prontuários', String(titular.prontuarios.length)],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-xs text-gray-500 dark:text-gray-400">{label}</dt>
+                    <dd className="font-medium text-gray-800 dark:text-gray-100">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
 
-          {/* Consentimentos */}
-          <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-800 dark:text-gray-100">Consentimentos</h2>
-              <div className="flex items-center gap-2">
-                <select
-                  value={novoTipo}
-                  onChange={e => setNovoTipo(e.target.value as TipoConsentimento)}
-                  className="text-xs border dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
-                >
-                  {TIPOS_CONSENTIMENTO.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => addConsentimento.mutate()}
-                  disabled={addConsentimento.isPending}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
-                >
-                  <Plus size={13} />
-                  Registrar
-                </button>
+          {/* Aba: Consentimentos */}
+          {abaAtiva === 'consentimentos' && (
+            <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold text-gray-800 dark:text-gray-100">Consentimentos</h2>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={novoTipoConsent}
+                    onChange={e => setNovoTipoConsent(e.target.value as TipoConsentimento)}
+                    className="text-xs border dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                  >
+                    {TIPOS_CONSENTIMENTO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                  <button
+                    onClick={() => addConsentimento.mutate()}
+                    disabled={addConsentimento.isPending}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                  >
+                    <Plus size={13} />Registrar
+                  </button>
+                </div>
+              </div>
+              {titular.consentimentos.length === 0
+                ? <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Nenhum consentimento registrado</p>
+                : (
+                  <div className="space-y-2">
+                    {titular.consentimentos.map(c => {
+                      const info = TIPOS_CONSENTIMENTO.find(t => t.value === c.tipo)
+                      return (
+                        <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-900/30 border dark:border-gray-700">
+                          <div>
+                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{info?.label ?? c.tipo} <span className="text-xs text-gray-400">{c.versao}</span></p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{info?.desc}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                              {new Date(c.aceito_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {c.revogado_em && ` · Revogado ${new Date(c.revogado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 ml-3">
+                            <BadgeConsentimento ativo={!c.revogado} />
+                            {!c.revogado && (
+                              <button onClick={() => revogar.mutate(c.id)} disabled={revogar.isPending}
+                                className="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 disabled:opacity-50">
+                                Revogar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+            </div>
+          )}
+
+          {/* Aba: Solicitações */}
+          {abaAtiva === 'solicitacoes' && (
+            <div className="space-y-4">
+              {/* Nova solicitação */}
+              <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-5">
+                <h2 className="font-semibold text-gray-800 dark:text-gray-100 mb-3">Nova Solicitação (Art. 18 LGPD)</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                    <select value={novoTipoSolic} onChange={e => setNovoTipoSolic(e.target.value as TipoSolicitacao)}
+                      className="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                      {TIPOS_SOLICITACAO.map(t => <option key={t.value} value={t.value}>{t.label} — {t.desc}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição (opcional)</label>
+                    <input type="text" value={descSolic} onChange={e => setDescSolic(e.target.value)} placeholder="Detalhes adicionais..."
+                      className="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                  </div>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button onClick={() => novaSolicitacao.mutate()} disabled={novaSolicitacao.isPending}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors">
+                    <Plus size={15} />{novaSolicitacao.isPending ? 'Registrando...' : 'Registrar solicitação'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 flex items-center gap-1">
+                  <Clock size={11} />Prazo legal de resposta: 15 dias corridos
+                </p>
+              </div>
+
+              {/* Lista */}
+              {solicitacoes.length === 0
+                ? <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">Nenhuma solicitação registrada</p>
+                : (
+                  <div className="space-y-3">
+                    {solicitacoes.map(s => {
+                      const tipoInfo = TIPOS_SOLICITACAO.find(t => t.value === s.tipo)
+                      const statusInfo = STATUS_SOLICITACAO[s.status]
+                      const vencida = s.status === 'pendente' && new Date(s.prazo) < new Date()
+                      return (
+                        <div key={s.id} className={`bg-white dark:bg-gray-800 border rounded-xl p-4 ${vencida ? 'border-red-300 dark:border-red-700' : 'dark:border-gray-700'}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${statusInfo.color}`}>{statusInfo.label}</span>
+                                <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{tipoInfo?.label}</span>
+                                {vencida && <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400"><AlertTriangle size={11} />Prazo vencido</span>}
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{tipoInfo?.desc}</p>
+                              {s.descricao && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{s.descricao}</p>}
+                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 flex items-center gap-3">
+                                <span>{new Date(s.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                <span className="flex items-center gap-1"><Clock size={10} />{diasRestantes(s.prazo)}</span>
+                              </p>
+                              {s.resposta && (
+                                <div className="mt-2 text-xs bg-gray-50 dark:bg-gray-900/30 border dark:border-gray-700 rounded-lg px-3 py-2">
+                                  <p className="text-gray-500 dark:text-gray-400 font-medium mb-0.5">Resposta:</p>
+                                  <p className="text-gray-700 dark:text-gray-300">{s.resposta}</p>
+                                </div>
+                              )}
+                            </div>
+                            {(s.status === 'pendente' || s.status === 'em_analise') && (
+                              <button onClick={() => { setRespondendo(s.id); setRespostaTexto(''); setStatusResposta('concluido') }}
+                                className="shrink-0 px-3 py-1.5 text-xs font-medium text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-600 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
+                                Responder
+                              </button>
+                            )}
+                          </div>
+
+                          {respondendo === s.id && (
+                            <div className="mt-3 border-t dark:border-gray-700 pt-3 space-y-2">
+                              <div className="flex gap-2">
+                                {(['em_analise', 'concluido', 'recusado'] as StatusSolicitacao[]).map(st => (
+                                  <button key={st} onClick={() => setStatusResposta(st)}
+                                    className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${statusResposta === st ? 'bg-teal-600 text-white border-teal-600' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                    {STATUS_SOLICITACAO[st].label}
+                                  </button>
+                                ))}
+                              </div>
+                              <textarea value={respostaTexto} onChange={e => setRespostaTexto(e.target.value)} rows={2}
+                                placeholder="Texto da resposta ao titular..." required
+                                className="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none" />
+                              <div className="flex justify-end gap-2">
+                                <button onClick={() => setRespondendo(null)} className="px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancelar</button>
+                                <button onClick={() => responder.mutate()} disabled={responder.isPending || !respostaTexto.trim()}
+                                  className="px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors">
+                                  {responder.isPending ? 'Salvando...' : 'Salvar resposta'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+            </div>
+          )}
+
+          {/* Aba: Log de Acessos */}
+          {abaAtiva === 'log' && (
+            <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-5">
+              <h2 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">Log de Acessos ao Prontuário</h2>
+              {titular.acessos.length === 0
+                ? <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Nenhum acesso registrado</p>
+                : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
+                          <th className="pb-2 pr-4 font-medium">Data/Hora</th>
+                          <th className="pb-2 pr-4 font-medium">Usuário</th>
+                          <th className="pb-2 font-medium">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y dark:divide-gray-700">
+                        {titular.acessos.map(a => (
+                          <tr key={a.id} className="text-gray-700 dark:text-gray-300">
+                            <td className="py-2 pr-4 whitespace-nowrap">{new Date(a.acessado_em).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                            <td className="py-2 pr-4 font-mono text-gray-400 text-[11px]">{a.usuario_id.slice(0, 8)}…</td>
+                            <td className="py-2 capitalize">{a.acao}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+            </div>
+          )}
+
+          {/* Aba: Retenção */}
+          {abaAtiva === 'retencao' && (
+            <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b dark:border-gray-700">
+                <h2 className="font-semibold text-gray-800 dark:text-gray-100">Políticas de Retenção</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Art. 15 e 16 LGPD — prazos mínimos legais</p>
+              </div>
+              <div className="divide-y dark:divide-gray-700">
+                {politicas.map(p => (
+                  <div key={p.id} className="flex items-center justify-between px-5 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 capitalize">{p.tipo_dado.replace('_', ' ')}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{p.base_legal}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-4">
+                      {editandoRetencao === p.id ? (
+                        <div className="flex items-center gap-2">
+                          <input type="number" value={prazoEdit} onChange={e => setPrazoEdit(e.target.value)} min={1}
+                            className="w-20 border dark:border-gray-600 rounded-lg px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                          <span className="text-xs text-gray-500">meses</span>
+                          <button onClick={() => salvarRetencao.mutate({ id: p.id, meses: Number(prazoEdit) })} disabled={salvarRetencao.isPending}
+                            className="p-1.5 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg">
+                            <Save size={15} />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-sm font-semibold text-teal-700 dark:text-teal-400">{p.prazo_meses} meses</span>
+                          <button onClick={() => { setEditandoRetencao(p.id); setPrazoEdit(String(p.prazo_meses)) }}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            <Edit3 size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-
-            {titular.consentimentos.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Nenhum consentimento registrado</p>
-            ) : (
-              <div className="space-y-2">
-                {titular.consentimentos.map(c => {
-                  const tipoInfo = TIPOS_CONSENTIMENTO.find(t => t.value === c.tipo)
-                  return (
-                    <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-900/30 border dark:border-gray-700">
-                      <div>
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{tipoInfo?.label ?? c.tipo} <span className="text-xs text-gray-400">{c.versao}</span></p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{tipoInfo?.desc}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                          Registrado em {new Date(c.aceito_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          {c.revogado_em && ` · Revogado em ${new Date(c.revogado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <BadgeStatus ativo={!c.revogado} />
-                        {!c.revogado && (
-                          <button
-                            onClick={() => revogar.mutate(c.id)}
-                            disabled={revogar.isPending}
-                            className="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 disabled:opacity-50"
-                          >
-                            Revogar
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Log de acessos */}
-          <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-5">
-            <h2 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">Log de Acessos ao Prontuário</h2>
-            {titular.acessos.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Nenhum acesso registrado</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
-                  <thead>
-                    <tr className="text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
-                      <th className="pb-2 pr-4 font-medium">Data/Hora</th>
-                      <th className="pb-2 pr-4 font-medium">Usuário</th>
-                      <th className="pb-2 font-medium">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y dark:divide-gray-700">
-                    {titular.acessos.map(a => (
-                      <tr key={a.id} className="text-gray-700 dark:text-gray-300">
-                        <td className="py-2 pr-4 whitespace-nowrap">
-                          {new Date(a.acessado_em).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td className="py-2 pr-4 font-mono text-gray-400 text-[11px]">{a.usuario_id.slice(0, 8)}…</td>
-                        <td className="py-2 capitalize">{a.acao}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          )}
         </>
       )}
 
-      {/* Modal confirmar anonimização */}
+      {/* Modal anonimização */}
       {confirmarAnon && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">Anonimizar titular?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-              Os dados pessoais ({paciente?.nome}) serão substituídos por <strong>[Titular Anonimizado]</strong> e não poderão ser recuperados.
+              Os dados pessoais de <strong>{paciente?.nome}</strong> serão substituídos por <strong>[Titular Anonimizado]</strong> e não poderão ser recuperados.
             </p>
             <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded px-3 py-2 mb-5">
-              O histórico clínico (prontuários) é mantido de forma dissociada conforme Art. 16 LGPD.
+              O histórico clínico é mantido de forma dissociada conforme Art. 16 LGPD.
             </p>
             <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmarAnon(false)}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => anonimizar.mutate()}
-                disabled={anonimizar.isPending}
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-              >
+              <button onClick={() => setConfirmarAnon(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancelar</button>
+              <button onClick={() => anonimizar.mutate()} disabled={anonimizar.isPending}
+                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
                 {anonimizar.isPending ? 'Anonimizando...' : 'Confirmar anonimização'}
               </button>
             </div>
