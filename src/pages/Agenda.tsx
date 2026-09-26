@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { useSessoes, useCriarSessao, useAtualizarSessao, useDeletarSessao } from '@/hooks/useSessoes'
 import { usePacientes } from '@/hooks/usePacientes'
 import { useQuery } from '@tanstack/react-query'
@@ -9,7 +9,9 @@ import {
   STATUS_SESSAO, MODALIDADE_SESSAO,
   semanaDeData, formatarData, diasDaSemana,
   publicarEventoSessaoRealizada,
+  verificarDisponibilidadeSala,
 } from '@/services/sessoes'
+import { listarSalas } from '@/services/salas'
 
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
@@ -29,6 +31,7 @@ const VAZIA: NovaSessao = {
   status: 'agendada',
   valor_sessao: undefined,
   parceria_id: undefined,
+  sala_id: undefined,
   observacoes: '',
 }
 
@@ -39,6 +42,7 @@ export default function Agenda() {
   const [form, setForm] = useState<NovaSessao>(VAZIA)
   const [confirmarDeletar, setConfirmarDeletar] = useState<string | null>(null)
   const [, setDiaPreSelecionado] = useState<string>('')
+  const [erroConflito, setErroConflito] = useState('')
 
   const { inicio, fim } = semanaDeData(semanaRef)
   const dias = diasDaSemana(inicio)
@@ -46,6 +50,7 @@ export default function Agenda() {
   const { data: sessoes = [], isLoading } = useSessoes(formatarData(inicio), formatarData(fim))
   const { data: pacientes = [] } = usePacientes()
   const { data: parcerias = [] } = useQuery({ queryKey: ['parcerias'], queryFn: listarParcerias })
+  const { data: salas = [] } = useQuery({ queryKey: ['salas', false], queryFn: () => listarSalas(true) })
   const criar = useCriarSessao()
   const atualizar = useAtualizarSessao()
   const deletar = useDeletarSessao()
@@ -78,6 +83,7 @@ export default function Agenda() {
 
   function abrirNova(data?: string) {
     setEditando(null)
+    setErroConflito('')
     setForm({ ...VAZIA, data_sessao: data ?? hoje })
     setDiaPreSelecionado(data ?? '')
     setModalAberto(true)
@@ -85,10 +91,12 @@ export default function Agenda() {
 
   function abrirEdicao(s: Sessao) {
     setEditando(s)
+    setErroConflito('')
     setForm({
       paciente_id:     s.paciente_id,
       profissional_id: s.profissional_id,
       parceria_id:     s.parceria_id,
+      sala_id:         s.sala_id,
       data_sessao:     s.data_sessao,
       hora_inicio:     s.hora_inicio,
       hora_fim:        s.hora_fim ?? '',
@@ -101,6 +109,8 @@ export default function Agenda() {
   }
 
   async function salvar() {
+    setErroConflito('')
+
     const dados: NovaSessao = {
       ...form,
       hora_fim:        form.hora_fim || undefined,
@@ -108,6 +118,28 @@ export default function Agenda() {
       valor_sessao:    form.valor_sessao || undefined,
       profissional_id: form.profissional_id || undefined,
       parceria_id:     form.parceria_id || undefined,
+      sala_id:         form.sala_id || undefined,
+    }
+
+    // Hard-block: verifica conflito de sala antes de salvar
+    if (dados.sala_id && dados.hora_fim) {
+      try {
+        const disponivel = await verificarDisponibilidadeSala(
+          dados.sala_id,
+          dados.data_sessao,
+          dados.hora_inicio,
+          dados.hora_fim,
+          editando?.id,
+        )
+        if (!disponivel) {
+          const nomeSala = salas.find(s => s.id === dados.sala_id)?.nome ?? 'sala selecionada'
+          setErroConflito(`Conflito: a ${nomeSala} já está ocupada ou bloqueada neste horário.`)
+          return
+        }
+      } catch {
+        setErroConflito('Não foi possível verificar a disponibilidade da sala. Tente novamente.')
+        return
+      }
     }
 
     const statusAnterior = editando?.status
@@ -218,6 +250,12 @@ export default function Agenda() {
                     >
                       <div className="font-medium truncate">{s.pacientes?.nome ?? '—'}</div>
                       <div className="opacity-70">{s.hora_inicio.slice(0, 5)}{s.hora_fim ? `–${s.hora_fim.slice(0, 5)}` : ''}</div>
+                      {s.sala_id && (
+                        <div className="opacity-60 truncate flex items-center gap-0.5">
+                          <span style={{ color: salas.find(sl => sl.id === s.sala_id)?.cor_hex }}>■</span>
+                          {salas.find(sl => sl.id === s.sala_id)?.nome}
+                        </div>
+                      )}
                       <button
                         onClick={e => { e.stopPropagation(); setConfirmarDeletar(s.id) }}
                         className="absolute top-0.5 right-0.5 hidden group-hover:flex p-0.5 rounded hover:bg-black/10"
@@ -342,6 +380,31 @@ export default function Agenda() {
                   </select>
                 </div>
               </div>
+
+              {/* Sala */}
+              {salas.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Sala <span className="text-xs text-gray-400 font-normal ml-1">(opcional)</span>
+                  </label>
+                  <select
+                    value={form.sala_id ?? ''}
+                    onChange={e => { setForm(f => ({ ...f, sala_id: e.target.value || undefined })); setErroConflito('') }}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Sem sala</option>
+                    {salas.map(s => (
+                      <option key={s.id} value={s.id}>{s.nome}</option>
+                    ))}
+                  </select>
+                  {erroConflito && (
+                    <div className="flex items-start gap-2 mt-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>{erroConflito}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Valor e Observações */}
               <div className="grid grid-cols-2 gap-3">

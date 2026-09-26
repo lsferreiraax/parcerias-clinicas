@@ -8,6 +8,7 @@ export interface Sessao {
   paciente_id: string
   profissional_id?: string
   parceria_id?: string
+  sala_id?: string
   data_sessao: string
   hora_inicio: string
   hora_fim?: string
@@ -27,6 +28,7 @@ export interface NovaSessao {
   paciente_id: string
   profissional_id?: string
   parceria_id?: string
+  sala_id?: string
   data_sessao: string
   hora_inicio: string
   hora_fim?: string
@@ -153,6 +155,27 @@ export async function publicarEventoSessaoRealizada(sessao: Sessao): Promise<voi
   } catch (e) {
     console.warn('[psicologia-eventos] falhou:', e)
   }
+}
+
+export async function verificarDisponibilidadeSala(
+  sala_id: string,
+  data: string,
+  hora_inicio: string,
+  hora_fim: string,
+  sessao_id_excluir?: string,
+): Promise<boolean> {
+  // psicologia.sala_disponivel — chamada via supabase com schema explícito
+  const { data: resultado, error } = await supabase
+    .schema('psicologia')
+    .rpc('sala_disponivel', {
+      p_sala_id:           sala_id,
+      p_data:              data,
+      p_hora_inicio:       hora_inicio,
+      p_hora_fim:          hora_fim,
+      p_sessao_id_excluir: sessao_id_excluir ?? null,
+    })
+  if (error) throw error
+  return resultado as boolean
 }
 
 export function diasDaSemana(inicio: Date): Date[] {
