@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Building2, Plus, ChevronLeft, ChevronRight, Pencil, Trash2, CheckCircle, AlertCircle, Clock, X } from 'lucide-react'
+import { Building2, Plus, ChevronLeft, ChevronRight, Pencil, Trash2, CheckCircle, AlertCircle, Clock, X, BarChart2 } from 'lucide-react'
+import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/lib/supabase'
 import { listarSalas } from '@/services/salas'
 import {
@@ -9,6 +10,7 @@ import {
   listarDespesas, criarDespesa, atualizarDespesa, excluirDespesa,
   listarDemonstrativos, getDemonstrativo, listarItensDemonstrativo,
   fecharCompetencia, atualizarStatusItem, calcularRateio,
+  listarDespesasHistorico, listarStatusItens,
   type ContratoSala, type NovoContrato,
   type DespesaCondominio, type NovaDespesa,
   type CalcItem,
@@ -310,7 +312,7 @@ function ModalDespesa({
 
 // ── Componente principal ──────────────────────────────────────
 
-type Aba = 'contratos' | 'despesas' | 'demonstrativo' | 'historico'
+type Aba = 'contratos' | 'despesas' | 'demonstrativo' | 'historico' | 'dashboard'
 
 export default function Condominio() {
   const qc = useQueryClient()
@@ -337,6 +339,17 @@ export default function Condominio() {
     queryKey: ['demonstrativo-itens', demAtual?.id],
     queryFn: () => listarItensDemonstrativo(demAtual!.id),
     enabled: !!demAtual?.id && aba === 'demonstrativo',
+  })
+
+  const { data: despesasHistorico = [] } = useQuery({
+    queryKey: ['despesas-historico'],
+    queryFn: listarDespesasHistorico,
+    enabled: aba === 'dashboard',
+  })
+  const { data: statusItens } = useQuery({
+    queryKey: ['status-itens'],
+    queryFn: listarStatusItens,
+    enabled: aba === 'dashboard',
   })
 
   // ── Calc (só para contratos permanentes ativos) ───────────────
@@ -381,6 +394,7 @@ export default function Condominio() {
     { id: 'despesas',      label: 'Despesas'      },
     { id: 'demonstrativo', label: 'Demonstrativo' },
     { id: 'historico',     label: 'Histórico'     },
+    { id: 'dashboard',     label: 'Dashboard'     },
   ]
 
   return (
@@ -774,6 +788,148 @@ export default function Condominio() {
           </table>
         </div>
       )}
+
+      {/* ── ABA DASHBOARD ─────────────────────────────────────── */}
+      {aba === 'dashboard' && (() => {
+        const CORES = { utilidade: '#3b82f6', servico: '#a855f7', imposto: '#f97316' }
+        const PIE_CORES = ['#f59e0b', '#22c55e', '#94a3b8']
+        const mesLabel = (ym: string) => {
+          const [y, m] = ym.split('-')
+          const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+          return `${nomes[+m-1]}/${y.slice(2)}`
+        }
+        const historicoFormatado = despesasHistorico.slice(-12).map(d => ({
+          ...d, mes: mesLabel(d.competencia),
+          total: +d.total.toFixed(2), utilidade: +d.utilidade.toFixed(2),
+          servico: +d.servico.toFixed(2), imposto: +d.imposto.toFixed(2),
+        }))
+        const pieData = statusItens ? [
+          { name: 'Pendente', value: statusItens.pendente },
+          { name: 'Pago',     value: statusItens.pago     },
+          { name: 'Isento',   value: statusItens.isento   },
+        ].filter(d => d.value > 0) : []
+
+        const totalContratos = contratos.filter(c => c.ativo).length
+        const totalPermanentes = contratos.filter(c => c.ativo && c.modalidade === 'permanente').length
+        const totalMensalidades = contratos
+          .filter(c => c.ativo && c.modalidade === 'permanente')
+          .reduce((s, c) => s + (c.valor_mensal ?? 0), 0)
+        const ultimoMes = historicoFormatado[historicoFormatado.length - 1]
+
+        return (
+          <div className="space-y-6">
+            {/* KPIs */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Contratos ativos', value: totalContratos, sub: `${totalPermanentes} permanentes` },
+                { label: 'Mensalidades/mês', value: fmtBRL(totalMensalidades), sub: 'contratos permanentes' },
+                { label: 'Despesas último mês', value: ultimoMes ? fmtBRL(ultimoMes.total) : '—', sub: ultimoMes ? mesLabel(ultimoMes.competencia) : 'sem dados' },
+                { label: 'Competências fechadas', value: demonstrativos.length, sub: 'histórico total' },
+              ].map(k => (
+                <div key={k.label} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{k.label}</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white font-variant-numeric">{k.value}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{k.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Evolução de despesas */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 size={16} className="text-orange-500" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Evolução de despesas — últimos 12 meses</h3>
+              </div>
+              {historicoFormatado.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-10">Nenhum dado de despesas ainda.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <AreaChart data={historicoFormatado} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gU" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CORES.utilidade} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={CORES.utilidade} stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="gS" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CORES.servico} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={CORES.servico} stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="gI" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CORES.imposto} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={CORES.imposto} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                    <YAxis tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} tick={{ fontSize: 11 }} width={52} />
+                    <Tooltip formatter={(v: number) => fmtBRL(v)} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Area type="monotone" dataKey="utilidade" name="Utilidade" stroke={CORES.utilidade} fill="url(#gU)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="servico"   name="Serviço"   stroke={CORES.servico}   fill="url(#gS)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="imposto"   name="Imposto"   stroke={CORES.imposto}   fill="url(#gI)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* Barra + pizza */}
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Total por categoria (barras) */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Total acumulado por categoria</h3>
+                {historicoFormatado.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-8">Sem dados.</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={historicoFormatado} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
+                      <YAxis tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} width={38} />
+                      <Tooltip formatter={(v: number) => fmtBRL(v)} />
+                      <Bar dataKey="utilidade" name="Utilidade" fill={CORES.utilidade} stackId="a" />
+                      <Bar dataKey="servico"   name="Serviço"   fill={CORES.servico}   stackId="a" />
+                      <Bar dataKey="imposto"   name="Imposto"   fill={CORES.imposto}   stackId="a" radius={[4,4,0,0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              {/* Status dos itens */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Status dos lançamentos</h3>
+                {pieData.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-8">Nenhuma competência fechada ainda.</p>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <ResponsiveContainer width="50%" height={180}>
+                      <PieChart>
+                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={78} dataKey="value" paddingAngle={3}>
+                          {pieData.map((_, i) => <Cell key={i} fill={PIE_CORES[i % PIE_CORES.length]} />)}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-2 flex-1">
+                      {pieData.map((d, i) => (
+                        <div key={d.name} className="flex items-center gap-2 text-sm">
+                          <span className="w-3 h-3 rounded-full shrink-0" style={{ background: PIE_CORES[i % PIE_CORES.length] }} />
+                          <span className="text-gray-700 dark:text-gray-300">{d.name}</span>
+                          <span className="ml-auto font-semibold text-gray-900 dark:text-white">{d.value}</span>
+                        </div>
+                      ))}
+                      {statusItens && (
+                        <div className="pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                          Total: {fmtBRL(statusItens.totalValor)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Modais ────────────────────────────────────────────── */}
       {modalContrato !== null && (

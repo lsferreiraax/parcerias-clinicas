@@ -352,6 +352,59 @@ export async function atualizarStatusItem(id: string, status: StatusItem): Promi
   if (error) throw error
 }
 
+// ── Analytics ─────────────────────────────────────────────────
+
+export interface DespesaMensal {
+  competencia: string   // 'YYYY-MM'
+  total: number
+  utilidade: number
+  servico: number
+  imposto: number
+}
+
+export interface StatusResumo {
+  pendente: number
+  pago: number
+  isento: number
+  totalValor: number
+}
+
+export async function listarDespesasHistorico(): Promise<DespesaMensal[]> {
+  const { data, error } = await supabase
+    .schema('psicologia')
+    .from('despesas_condominio')
+    .select('competencia, valor_total, categoria')
+    .order('competencia', { ascending: true })
+  if (error) throw error
+
+  const map = new Map<string, DespesaMensal>()
+  for (const row of data ?? []) {
+    const key = (row.competencia as string).slice(0, 7)
+    if (!map.has(key)) map.set(key, { competencia: key, total: 0, utilidade: 0, servico: 0, imposto: 0 })
+    const m = map.get(key)!
+    m.total += row.valor_total
+    if (row.categoria === 'utilidade') m.utilidade += row.valor_total
+    else if (row.categoria === 'servico') m.servico += row.valor_total
+    else if (row.categoria === 'imposto') m.imposto += row.valor_total
+  }
+  return Array.from(map.values())
+}
+
+export async function listarStatusItens(): Promise<StatusResumo> {
+  const { data, error } = await supabase
+    .schema('psicologia')
+    .from('demonstrativo_itens')
+    .select('status, valor_mensalidade, valor_rateio')
+  if (error) throw error
+
+  const result: StatusResumo = { pendente: 0, pago: 0, isento: 0, totalValor: 0 }
+  for (const row of data ?? []) {
+    result[row.status as StatusItem]++
+    result.totalValor += (row.valor_mensalidade ?? 0) + (row.valor_rateio ?? 0)
+  }
+  return result
+}
+
 // ── Cálculo em memória ────────────────────────────────────────
 
 export function calcularRateio(
