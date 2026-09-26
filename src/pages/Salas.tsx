@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Building2, Plus, Pencil, Power, Trash2, Clock, Users, X, Check, Ban, CalendarX,
+  Building2, Plus, Pencil, Power, Trash2, Clock, Users, X, Check, Ban, CalendarX, BarChart2,
 } from 'lucide-react'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+} from 'recharts'
 import {
   listarSalas, criarSala, atualizarSala, alternarAtivoSala, excluirSala,
   TIPOS_SALA, CORES_SALA,
@@ -12,6 +15,8 @@ import {
   listarBloqueios, criarBloqueio, atualizarBloqueio, excluirBloqueio,
   type BloqueioSala, type NovoBloqueio,
 } from '@/services/bloqueiosSala'
+import { supabase } from '@/lib/supabase'
+import type { Sessao } from '@/services/sessoes'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -32,7 +37,15 @@ function formatarData(iso: string) {
 
 export default function Salas() {
   const qc = useQueryClient()
-  const [aba, setAba] = useState<'salas' | 'bloqueios'>('salas')
+  const [aba, setAba] = useState<'salas' | 'bloqueios' | 'relatorio'>('salas')
+
+  // ── estado relatório ──────────────────────────────────────────────────────
+  const hoje = new Date()
+  const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10)
+  const ultimoDiaMes   = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().slice(0, 10)
+  const [relInicio, setRelInicio] = useState(primeiroDiaMes)
+  const [relFim, setRelFim]       = useState(ultimoDiaMes)
+  const [relSalaId, setRelSalaId] = useState('')
   const [mostrarInativas, setMostrarInativas] = useState(false)
   const [filtroBloqueioSala, setFiltroBloqueioSala] = useState('')
 
@@ -59,6 +72,52 @@ export default function Salas() {
     queryKey: ['bloqueios-sala'],
     queryFn: () => listarBloqueios(),
   })
+
+  const { data: sessoesRel = [] } = useQuery({
+    queryKey: ['sessoes-relatorio', relInicio, relFim],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .schema('psicologia')
+        .from('sessoes')
+        .select('sala_id, hora_inicio, hora_fim, data_sessao, status')
+        .gte('data_sessao', relInicio)
+        .lte('data_sessao', relFim)
+        .not('sala_id', 'is', null)
+        .neq('status', 'cancelada')
+      if (error) throw error
+      return (data ?? []) as Pick<Sessao, 'sala_id' | 'hora_inicio' | 'hora_fim' | 'data_sessao' | 'status'>[]
+    },
+    enabled: aba === 'relatorio',
+  })
+
+  // Dados de ocupação por sala
+  const dadosOcupacao = useMemo(() => {
+    if (!salas.length) return []
+    const diasPeriodo = Math.max(1, Math.round(
+      (new Date(relFim).getTime() - new Date(relInicio).getTime()) / 86400000,
+    ) + 1)
+
+    return salas.map(sala => {
+      const sessoesDaSala = sessoesRel.filter(s => s.sala_id === sala.id && (!relSalaId || sala.id === relSalaId))
+      const minutosUsados = sessoesDaSala.reduce((acc, s) => {
+        if (!s.hora_fim) return acc
+        const [hi, mi] = s.hora_inicio.split(':').map(Number)
+        const [hf, mf] = s.hora_fim.split(':').map(Number)
+        return acc + Math.max(0, (hf * 60 + mf) - (hi * 60 + mi))
+      }, 0)
+      const [hI] = sala.horario_inicio.split(':').map(Number)
+      const [hF] = sala.horario_fim.split(':').map(Number)
+      const minutosDisponiveis = Math.max(1, (hF - hI) * 60 * diasPeriodo)
+      const ocupacao = Math.round((minutosUsados / minutosDisponiveis) * 100)
+      return {
+        nome: sala.nome,
+        cor: sala.cor_hex,
+        ocupacao,
+        sessoes: sessoesDaSala.length,
+        horas: Math.round(minutosUsados / 6) / 10,
+      }
+    }).filter(d => !relSalaId || salas.find(s => s.id === relSalaId)?.nome === d.nome)
+  }, [salas, sessoesRel, relSalaId, relInicio, relFim])
 
   const invalidarSalas = () => qc.invalidateQueries({ queryKey: ['salas'] })
   const invalidarBloqueios = () => qc.invalidateQueries({ queryKey: ['bloqueios-sala'] })
@@ -155,7 +214,7 @@ export default function Salas() {
 
       {/* Abas */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6 gap-1">
-        {([['salas', 'Salas', Building2], ['bloqueios', 'Bloqueios', Ban]] as const).map(([id, label, Icon]) => (
+        {([['salas', 'Salas', Building2], ['bloqueios', 'Bloqueios', Ban], ['relatorio', 'Relatório', BarChart2]] as const).map(([id, label, Icon]) => (
           <button
             key={id}
             onClick={() => setAba(id)}
@@ -284,6 +343,114 @@ export default function Salas() {
                         <div className="flex items-center gap-3 justify-end">
                           <button onClick={() => abrirEditarBloqueio(b)} className="text-gray-400 hover:text-orange-500 transition-colors"><Pencil className="w-4 h-4" /></button>
                           <button onClick={() => setConfirmarExclusaoBloqueio(b.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── ABA RELATÓRIO ─────────────────────────────────────────────────── */}
+      {aba === 'relatorio' && (
+        <>
+          {/* Filtros */}
+          <div className="flex items-center gap-3 mb-6 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400">De</label>
+              <input type="date" value={relInicio} onChange={e => setRelInicio(e.target.value)}
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-400" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400">até</label>
+              <input type="date" value={relFim} onChange={e => setRelFim(e.target.value)}
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-400" />
+            </div>
+            <select value={relSalaId} onChange={e => setRelSalaId(e.target.value)}
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-400">
+              <option value="">Todas as salas</option>
+              {salas.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+            </select>
+          </div>
+
+          {/* KPIs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: 'Sessões realizadas', valor: sessoesRel.filter(s => !relSalaId || s.sala_id === relSalaId).length },
+              { label: 'Horas utilizadas', valor: `${dadosOcupacao.reduce((a, d) => a + d.horas, 0).toFixed(1)}h` },
+              { label: 'Ocupação média', valor: `${Math.round(dadosOcupacao.reduce((a, d) => a + d.ocupacao, 0) / Math.max(1, dadosOcupacao.length))}%` },
+              { label: 'Salas analisadas', valor: dadosOcupacao.length },
+            ].map(k => (
+              <div key={k.label} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-center">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white font-variant-numeric">{k.valor}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{k.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Gráfico de barras */}
+          {dadosOcupacao.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">Nenhuma sessão com sala vinculada no período.</div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Taxa de ocupação por sala (%)</h3>
+                <span className="text-xs text-gray-400">Referência: 85% = uso eficiente</span>
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={dadosOcupacao} margin={{ top: 4, right: 12, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--tw-border-opacity, #e5e7eb)" vertical={false} />
+                  <XAxis dataKey="nome" tick={{ fontSize: 12 }} />
+                  <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    formatter={(v: number, _: string, props: { payload?: { sessoes?: number; horas?: number } }) => [
+                      `${v}% (${props.payload?.sessoes ?? 0} sessões · ${props.payload?.horas ?? 0}h)`,
+                      'Ocupação',
+                    ]}
+                  />
+                  {/* Linha de referência 85% */}
+                  <Bar dataKey="ocupacao" radius={[4, 4, 0, 0]} maxBarSize={64}>
+                    {dadosOcupacao.map((d, i) => (
+                      <Cell key={i} fill={d.cor} fillOpacity={d.ocupacao >= 85 ? 1 : 0.7} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <p className="text-xs text-gray-400 mt-2 text-right">Barras em destaque = ocupação ≥ 85%</p>
+            </div>
+          )}
+
+          {/* Tabela detalhada */}
+          {dadosOcupacao.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sala</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sessões</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Horas</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Ocupação</th>
+                    <th className="px-4 py-3 w-36" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {dadosOcupacao.map((d, i) => (
+                    <tr key={i} className="border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.cor }} />
+                          <span className="font-medium text-gray-900 dark:text-white">{d.nome}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-300 tabular-nums">{d.sessoes}</td>
+                      <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-300 tabular-nums">{d.horas}h</td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums" style={{ color: d.cor }}>{d.ocupacao}%</td>
+                      <td className="px-4 py-3">
+                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                          <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, d.ocupacao)}%`, backgroundColor: d.cor }} />
                         </div>
                       </td>
                     </tr>
