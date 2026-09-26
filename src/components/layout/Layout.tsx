@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import pkg from '../../../package.json'
 import { NavLink, Outlet, useLocation } from "react-router-dom"
-import { LayoutDashboard, ClipboardList, CreditCard, BarChart3, FileText, Users, LogOut, Settings, FileDown, ArrowLeftRight, AlertOctagon, Menu, X, Sun, Moon, Download, Wallet, UserRound, CalendarDays, Shield, Building2, Grid3X3 } from "lucide-react"
+import { LayoutDashboard, ClipboardList, CreditCard, BarChart3, FileText, Users, LogOut, Settings, FileDown, ArrowLeftRight, AlertOctagon, Menu, X, Sun, Moon, Download, Wallet, UserRound, CalendarDays, Shield, Building2, Grid3X3, Home } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { usePerfil } from "@/contexts/PerfilContext"
 import { useParcelasAlerta } from "@/hooks/useResumo"
@@ -34,6 +34,7 @@ const nav: NavItem[] = [
   { to: '/titular-dados',   label: 'Titular de Dados', icon: Shield,         roles: ['admin'],        modulo: 'psicologia' },
   { to: '/salas',           label: 'Salas',            icon: Building2,      roles: ['admin'],                       modulo: 'psicologia' },
   { to: '/grade-salas',    label: 'Grade de Salas',   icon: Grid3X3,        roles: ['admin', 'gestor'],             modulo: 'psicologia' },
+  { to: '/condominio',     label: 'Condomínio',       icon: Home,           roles: ['admin'],                       modulo: 'psicologia' },
   { to: '/relatorios',      label: 'Relatórios',      icon: FileDown,       roles: ['admin', 'gestor'] },
   { to: '/usuarios',      label: 'Usuários',      icon: Users,           roles: ['admin'] },
   { to: '/configuracoes', label: 'Configurações', icon: Settings,        roles: ['admin'] },
