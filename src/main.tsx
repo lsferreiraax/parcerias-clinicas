@@ -25,6 +25,7 @@ import Agenda from '@/pages/Agenda'
 import Prontuario from '@/pages/Prontuario'
 import DashboardPsicologia from '@/pages/DashboardPsicologia'
 import TitularDados from '@/pages/TitularDados'
+import Salas from '@/pages/Salas'
 import ModuloGuard from '@/components/auth/ModuloGuard'
 import './index.css'
 
@@ -114,6 +115,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     <Route path="titular-dados" element={
                       <ModuloGuard modulo="psicologia" roles={['admin']} redirect="/">
                         <TitularDados />
+                      </ModuloGuard>
+                    } />
+                    <Route path="salas" element={
+                      <ModuloGuard modulo="psicologia" roles={['admin']} redirect="/">
+                        <Salas />
                       </ModuloGuard>
                     } />
                     <Route path="configuracoes" element={
