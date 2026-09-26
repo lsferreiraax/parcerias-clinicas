@@ -311,7 +311,35 @@ export async function fecharCompetencia(competencia: string, itens: CalcItem[]):
     .single()
   if (e1) throw e1
 
+  // Mês de referência para movimentacoes_parceria (primeiro dia do mês)
+  const compDate = competencia  // já é 'YYYY-MM-01'
+  const mesLabel = (() => {
+    const [y, m] = competencia.split('-')
+    const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+    return `${nomes[+m - 1]}/${y}`
+  })()
+
   for (const item of itens) {
+    // 1. Cria entrada financeira em movimentacoes_parceria
+    const { data: mov, error: eMov } = await supabase
+      .from('movimentacoes_parceria')
+      .insert({
+        parceria_id:    item.profissionalId,  // UUID como texto (sem FK constraint)
+        profissional_id: item.profissionalId,
+        tipo:           'debito',
+        categoria:      'aluguel_sala',
+        valor:          item.valorMensalidade + item.totalRateio,
+        descricao:      `Condomínio ${mesLabel} — ${item.salaNome}`,
+        competencia:    compDate,
+        status:         'pendente',
+        criado_por:     user?.id,
+      })
+      .select('id')
+      .single()
+
+    const lancamentoId = eMov ? null : mov?.id ?? null
+
+    // 2. Cria item do demonstrativo com referência financeira
     const { data: demItem, error: e2 } = await supabase
       .schema('psicologia')
       .from('demonstrativo_itens')
@@ -323,6 +351,7 @@ export async function fecharCompetencia(competencia: string, itens: CalcItem[]):
         valor_mensalidade: item.valorMensalidade,
         valor_rateio:      item.totalRateio,
         status:            'pendente',
+        lancamento_id:     lancamentoId,
       })
       .select()
       .single()
@@ -344,12 +373,23 @@ export async function fecharCompetencia(competencia: string, itens: CalcItem[]):
 }
 
 export async function atualizarStatusItem(id: string, status: StatusItem): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .schema('psicologia')
     .from('demonstrativo_itens')
     .update({ status })
     .eq('id', id)
+    .select('lancamento_id')
+    .single()
   if (error) throw error
+
+  // Sincroniza status na movimentação financeira
+  if (data?.lancamento_id) {
+    const movStatus = status === 'pago' ? 'liquidado' : status === 'isento' ? 'cancelado' : 'pendente'
+    await supabase
+      .from('movimentacoes_parceria')
+      .update({ status: movStatus })
+      .eq('id', data.lancamento_id)
+  }
 }
 
 // ── Analytics ─────────────────────────────────────────────────

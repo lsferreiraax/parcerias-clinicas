@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { usePerfil } from "@/contexts/PerfilContext"
 import { useParcelasAlerta } from "@/hooks/useResumo"
 import { useRepassesPendentesAlerta } from "@/hooks/useRepasses"
+import { useCondominioAlerta } from "@/hooks/useCondominio"
 import type { Role } from "@/contexts/PerfilContext"
 import { temAcessoModulo } from "@/config/modulos"
 
@@ -14,7 +15,7 @@ interface NavItem {
   label: string
   icon: React.ElementType
   roles: Role[]
-  badge?: 'parcelas' | 'repasses'
+  badge?: 'parcelas' | 'repasses' | 'condominio'
   modulo?: string
 }
 
@@ -34,7 +35,7 @@ const nav: NavItem[] = [
   { to: '/titular-dados',   label: 'Titular de Dados', icon: Shield,         roles: ['admin'],        modulo: 'psicologia' },
   { to: '/salas',           label: 'Salas',            icon: Building2,      roles: ['admin'],                       modulo: 'psicologia' },
   { to: '/grade-salas',    label: 'Grade de Salas',   icon: Grid3X3,        roles: ['admin', 'gestor'],             modulo: 'psicologia' },
-  { to: '/condominio',     label: 'Condomínio',       icon: Home,           roles: ['admin'],                       modulo: 'psicologia' },
+  { to: '/condominio',     label: 'Condomínio',       icon: Home,           roles: ['admin'],                       modulo: 'psicologia', badge: 'condominio' },
   { to: '/relatorios',      label: 'Relatórios',      icon: FileDown,       roles: ['admin', 'gestor'] },
   { to: '/usuarios',      label: 'Usuários',      icon: Users,           roles: ['admin'] },
   { to: '/configuracoes', label: 'Configurações', icon: Settings,        roles: ['admin'] },
@@ -43,10 +44,11 @@ const nav: NavItem[] = [
 const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', gestor: 'Gestor', profissional: 'Profissional' }
 
 function SidebarContent({
-  alertaCount, repassesAlerta, can, perfil, user, signOut, onNavClick,
+  alertaCount, repassesAlerta, condominioAlerta, can, perfil, user, signOut, onNavClick,
 }: {
   alertaCount: number
   repassesAlerta: number
+  condominioAlerta: number
   can: (roles: Role[]) => boolean
   perfil: { nome: string; role: Role } | null
   user: { email?: string } | null
@@ -87,6 +89,11 @@ function SidebarContent({
             {badge === 'repasses' && repassesAlerta > 0 && (
               <span className="bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                 {repassesAlerta}
+              </span>
+            )}
+            {badge === 'condominio' && condominioAlerta > 0 && (
+              <span className="bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                {condominioAlerta}
               </span>
             )}
           </NavLink>
@@ -152,8 +159,9 @@ function useDarkMode() {
 export default function Layout() {
   const { user, signOut }            = useAuth()
   const { perfil, can }              = usePerfil()
-  const { data: alertaCount = 0 }    = useParcelasAlerta()
-  const { data: repassesAlerta = 0 } = useRepassesPendentesAlerta()
+  const { data: alertaCount = 0 }      = useParcelasAlerta()
+  const { data: repassesAlerta = 0 }   = useRepassesPendentesAlerta()
+  const { data: condominioAlerta = 0 } = useCondominioAlerta()
   const [drawerOpen, setDrawerOpen]  = useState(false)
   const location                     = useLocation()
   const { dark, toggle: toggleDark } = useDarkMode()
@@ -165,7 +173,7 @@ export default function Layout() {
     return () => { document.body.style.overflow = '' }
   }, [drawerOpen])
 
-  const sidebarProps = { alertaCount, repassesAlerta, can, perfil, user, signOut }
+  const sidebarProps = { alertaCount, repassesAlerta, condominioAlerta, can, perfil, user, signOut }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
