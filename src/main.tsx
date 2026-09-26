@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { PerfilProvider } from '@/contexts/PerfilContext'
+import { PermissoesProvider } from '@/contexts/PermissoesContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import RoleGuard from '@/components/auth/RoleGuard'
 import Layout from '@/components/layout/Layout'
@@ -28,6 +29,8 @@ import TitularDados from '@/pages/TitularDados'
 import Salas from '@/pages/Salas'
 import GradeSalas from '@/pages/GradeSalas'
 import Condominio from '@/pages/Condominio'
+import Perfis from '@/pages/Perfis'
+import SemAcesso from '@/pages/SemAcesso'
 import ModuloGuard from '@/components/auth/ModuloGuard'
 import './index.css'
 
@@ -43,6 +46,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={qc}>
         <AuthProvider>
           <PerfilProvider>
+            <PermissoesProvider>
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<Login />} />
@@ -139,11 +143,18 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                         <Configuracoes />
                       </RoleGuard>
                     } />
+                    <Route path="perfis" element={
+                      <RoleGuard roles={['admin']} redirect="/">
+                        <Perfis />
+                      </RoleGuard>
+                    } />
+                    <Route path="sem-acesso" element={<SemAcesso />} />
                   </Route>
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </BrowserRouter>
+            </PermissoesProvider>
           </PerfilProvider>
         </AuthProvider>
       </QueryClientProvider>

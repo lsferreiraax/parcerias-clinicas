@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { UserPlus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Card, CardHeader, CardBody, Badge, Button, Modal, Input, Select } from '@/components/ui'
 import { listarUsuarios, convidarUsuario, atualizarPerfil } from '@/services/usuarios'
+import { listarPerfis, atribuirPerfilUsuario } from '@/services/perfisAcesso'
+import { useAuth } from '@/contexts/AuthContext'
 import type { UserPerfil, Role, TipoProfissional } from '@/contexts/PerfilContext'
 
 const ROLE_LABEL: Record<Role, string>   = { admin: 'Admin', gestor: 'Gestor', profissional: 'Profissional' }
@@ -15,13 +17,14 @@ const PROF_LABEL: Record<TipoProfissional, string> = {
   camta: 'Camta', medico: 'Médico', psi1: 'Psi1', psi2: 'Psi2',
 }
 
-const INIT_NOVO = { email: '', nome: '', role: 'gestor' as Role, tipo_profissional: '' }
-const INIT_EDIT = { nome: '', role: 'gestor' as Role, tipo_profissional: '' as TipoProfissional | '' }
+const INIT_NOVO = { email: '', nome: '', role: 'gestor' as Role, tipo_profissional: '', perfil_id: '' }
+const INIT_EDIT = { nome: '', role: 'gestor' as Role, tipo_profissional: '' as TipoProfissional | '', perfil_id: '' }
 
 export default function Usuarios() {
   const qc = useQueryClient()
+  const { user } = useAuth()
   const [modalNovo, setModalNovo] = useState(false)
-  const [editando, setEditando]   = useState<(UserPerfil & { email?: string }) | null>(null)
+  const [editando, setEditando]   = useState<(UserPerfil & { email?: string; perfil_id?: string }) | null>(null)
   const [formNovo, setFormNovo]   = useState(INIT_NOVO)
   const [formEdit, setFormEdit]   = useState(INIT_EDIT)
   const [erro, setErro]           = useState('')
@@ -29,6 +32,11 @@ export default function Usuarios() {
   const { data: usuarios, isLoading } = useQuery({
     queryKey: ['usuarios'],
     queryFn: listarUsuarios,
+  })
+
+  const { data: perfisAcesso = [] } = useQuery({
+    queryKey: ['perfis-acesso'],
+    queryFn: listarPerfis,
   })
 
   const convidar = useMutation({
@@ -43,19 +51,29 @@ export default function Usuarios() {
   })
 
   const atualizar = useMutation({
-    mutationFn: ({ id, dados }: { id: string; dados: Parameters<typeof atualizarPerfil>[1] }) =>
-      atualizarPerfil(id, dados),
+    mutationFn: async ({ id, dados, perfilId, perfilAnterior }: {
+      id: string
+      dados: Parameters<typeof atualizarPerfil>[1]
+      perfilId?: string
+      perfilAnterior?: string | null
+    }) => {
+      await atualizarPerfil(id, dados)
+      if (perfilId && perfilId !== perfilAnterior) {
+        await atribuirPerfilUsuario(id, perfilId, user!.id, perfilAnterior ?? null)
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['usuarios'] })
+      qc.invalidateQueries({ queryKey: ['permissoes'] })
       setEditando(null)
       setErro('')
     },
     onError: (e: Error) => setErro(e.message),
   })
 
-  const abrirEdicao = (u: UserPerfil) => {
+  const abrirEdicao = (u: UserPerfil & { perfil_id?: string }) => {
     setEditando(u)
-    setFormEdit({ nome: u.nome, role: u.role, tipo_profissional: u.tipo_profissional ?? '' })
+    setFormEdit({ nome: u.nome, role: u.role, tipo_profissional: u.tipo_profissional ?? '', perfil_id: u.perfil_id ?? '' })
     setErro('')
   }
 
@@ -70,6 +88,7 @@ export default function Usuarios() {
       nome:              formNovo.nome,
       role:              formNovo.role,
       tipo_profissional: (formNovo.tipo_profissional as TipoProfissional) || undefined,
+      perfil_id:         formNovo.perfil_id || undefined,
     })
   }
 
@@ -86,6 +105,8 @@ export default function Usuarios() {
         role:              formEdit.role,
         tipo_profissional: (formEdit.tipo_profissional as TipoProfissional) || null,
       },
+      perfilId:       formEdit.perfil_id || undefined,
+      perfilAnterior: editando.perfil_id,
     })
   }
 
@@ -114,14 +135,14 @@ export default function Usuarios() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                 <tr>
-                  {['Nome', 'E-mail', 'Perfil', 'Tipo', 'Status', 'Ações'].map(h => (
+                  {['Nome', 'E-mail', 'Role', 'Perfil de Acesso', 'Tipo', 'Status', 'Ações'].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {isLoading && (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
+                  <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Carregando...</td></tr>
                 )}
                 {(usuarios ?? []).map(u => (
                   <tr key={u.id} className={`hover:bg-gray-50 ${!u.ativo ? 'opacity-50' : ''}`}>
@@ -131,6 +152,11 @@ export default function Usuarios() {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ROLE_COLOR[u.role]}`}>
                         {ROLE_LABEL[u.role]}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {(u as any).perfil_nome
+                        ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300">{(u as any).perfil_nome}</span>
+                        : <span className="text-gray-400 text-xs">—</span>}
                     </td>
                     <td className="px-4 py-3 text-gray-500">
                       {u.tipo_profissional ? PROF_LABEL[u.tipo_profissional] : '—'}
@@ -186,6 +212,11 @@ export default function Usuarios() {
               <option value="psi2">Psi2</option>
             </Select>
           )}
+          <Select label="Perfil de Acesso" value={formNovo.perfil_id}
+            onChange={e => setFormNovo(f => ({ ...f, perfil_id: e.target.value }))}>
+            <option value="">Selecione um perfil...</option>
+            {perfisAcesso.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </Select>
           {erro && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{erro}</p>}
           <p className="text-xs text-gray-400">O usuário receberá um e-mail para definir a senha.</p>
           <div className="flex gap-3 pt-2">
@@ -222,6 +253,14 @@ export default function Usuarios() {
               <option value="psi2">Psi2</option>
             </Select>
           )}
+          <Select label="Perfil de Acesso" value={formEdit.perfil_id}
+            onChange={e => setFormEdit(f => ({ ...f, perfil_id: e.target.value }))}>
+            <option value="">Sem perfil configurado</option>
+            {perfisAcesso.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </Select>
+          <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1">
+            Alterar o perfil invalida as permissões do usuário no próximo acesso.
+          </p>
           {erro && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{erro}</p>}
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" className="flex-1" onClick={() => setEditando(null)}>Cancelar</Button>

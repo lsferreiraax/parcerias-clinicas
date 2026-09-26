@@ -4,11 +4,12 @@ import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { LayoutDashboard, ClipboardList, CreditCard, BarChart3, FileText, Users, LogOut, Settings, FileDown, ArrowLeftRight, AlertOctagon, Menu, X, Sun, Moon, Download, Wallet, UserRound, CalendarDays, Shield, Building2, Grid3X3, Home } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { usePerfil } from "@/contexts/PerfilContext"
+import { usePermissoes } from "@/contexts/PermissoesContext"
 import { useParcelasAlerta } from "@/hooks/useResumo"
 import { useRepassesPendentesAlerta } from "@/hooks/useRepasses"
 import { useCondominioAlerta } from "@/hooks/useCondominio"
 import type { Role } from "@/contexts/PerfilContext"
-import { temAcessoModulo } from "@/config/modulos"
+import type { Modulo } from "@/contexts/PermissoesContext"
 
 interface NavItem {
   to: string
@@ -16,40 +17,42 @@ interface NavItem {
   icon: React.ElementType
   roles: Role[]
   badge?: 'parcelas' | 'repasses' | 'condominio'
-  modulo?: string
+  modulo?: Modulo
 }
 
 const nav: NavItem[] = [
-  { to: '/',              label: 'Dashboard',     icon: LayoutDashboard, roles: ['admin', 'gestor'] },
-  { to: '/lancamentos',   label: 'Lançamentos',   icon: ClipboardList,   roles: ['admin', 'gestor'] },
-  { to: '/parcelas',      label: 'Parcelas',      icon: CreditCard,      roles: ['admin', 'gestor'], badge: 'parcelas' },
-  { to: '/inadimplencia', label: 'Inadimplência', icon: AlertOctagon,    roles: ['admin', 'gestor'] },
-  { to: '/resumo',        label: 'Resumo',        icon: BarChart3,       roles: ['admin', 'gestor'] },
-  { to: '/extrato',       label: 'Extrato',       icon: FileText,        roles: ['admin', 'gestor', 'profissional'] },
-  { to: '/repasses',        label: 'Repasses',        icon: ArrowLeftRight, roles: ['admin', 'gestor'], badge: 'repasses' },
-  { to: '/conta-corrente',  label: 'Conta Corrente',  icon: Wallet,         roles: ['admin', 'gestor'] },
+  { to: '/',              label: 'Dashboard',     icon: LayoutDashboard, roles: ['admin', 'gestor'],              modulo: 'parcerias' },
+  { to: '/lancamentos',   label: 'Lançamentos',   icon: ClipboardList,   roles: ['admin', 'gestor'],              modulo: 'parcerias' },
+  { to: '/parcelas',      label: 'Parcelas',      icon: CreditCard,      roles: ['admin', 'gestor'],              modulo: 'parcerias', badge: 'parcelas' },
+  { to: '/inadimplencia', label: 'Inadimplência', icon: AlertOctagon,    roles: ['admin', 'gestor'],              modulo: 'parcerias' },
+  { to: '/resumo',        label: 'Resumo',        icon: BarChart3,       roles: ['admin', 'gestor'],              modulo: 'parcerias' },
+  { to: '/extrato',       label: 'Extrato',       icon: FileText,        roles: ['admin', 'gestor', 'profissional'], modulo: 'parcerias' },
+  { to: '/repasses',        label: 'Repasses',        icon: ArrowLeftRight, roles: ['admin', 'gestor'],           modulo: 'parcerias', badge: 'repasses' },
+  { to: '/conta-corrente',  label: 'Conta Corrente',  icon: Wallet,         roles: ['admin', 'gestor'],           modulo: 'conta_corrente' },
   { to: '/pacientes',       label: 'Pacientes',       icon: UserRound,      roles: ['admin', 'gestor', 'profissional'], modulo: 'psicologia' },
   { to: '/agenda',          label: 'Agenda',          icon: CalendarDays,   roles: ['admin', 'gestor', 'profissional'], modulo: 'psicologia' },
-  { to: '/dashboard-psicologia', label: 'Psicologia',  icon: BarChart3,      roles: ['admin', 'gestor', 'profissional'], modulo: 'psicologia' },
-  { to: '/prontuario',      label: 'Prontuário',      icon: ClipboardList,  roles: ['profissional'], modulo: 'psicologia' },
-  { to: '/titular-dados',   label: 'Titular de Dados', icon: Shield,         roles: ['admin'],        modulo: 'psicologia' },
-  { to: '/salas',           label: 'Salas',            icon: Building2,      roles: ['admin'],                       modulo: 'psicologia' },
-  { to: '/grade-salas',    label: 'Grade de Salas',   icon: Grid3X3,        roles: ['admin', 'gestor'],             modulo: 'psicologia' },
-  { to: '/condominio',     label: 'Condomínio',       icon: Home,           roles: ['admin'],                       modulo: 'psicologia', badge: 'condominio' },
-  { to: '/relatorios',      label: 'Relatórios',      icon: FileDown,       roles: ['admin', 'gestor'] },
-  { to: '/usuarios',      label: 'Usuários',      icon: Users,           roles: ['admin'] },
-  { to: '/configuracoes', label: 'Configurações', icon: Settings,        roles: ['admin'] },
+  { to: '/dashboard-psicologia', label: 'Psicologia', icon: BarChart3,      roles: ['admin', 'gestor', 'profissional'], modulo: 'psicologia' },
+  { to: '/prontuario',      label: 'Prontuário',      icon: ClipboardList,  roles: ['profissional'],              modulo: 'psicologia' },
+  { to: '/titular-dados',   label: 'Titular de Dados', icon: Shield,        roles: ['admin'],                    modulo: 'psicologia' },
+  { to: '/salas',           label: 'Salas',            icon: Building2,     roles: ['admin'],                    modulo: 'salas' },
+  { to: '/grade-salas',    label: 'Grade de Salas',   icon: Grid3X3,        roles: ['admin', 'gestor'],          modulo: 'salas' },
+  { to: '/condominio',     label: 'Condomínio',       icon: Home,           roles: ['admin'],                    modulo: 'condominio', badge: 'condominio' },
+  { to: '/relatorios',      label: 'Relatórios',      icon: FileDown,       roles: ['admin', 'gestor'],          modulo: 'relatorios' },
+  { to: '/usuarios',        label: 'Usuários',        icon: Users,          roles: ['admin'],                    modulo: 'usuarios' },
+  { to: '/perfis',          label: 'Perfis de Acesso', icon: Shield,        roles: ['admin'],                    modulo: 'usuarios' },
+  { to: '/configuracoes',   label: 'Configurações',   icon: Settings,       roles: ['admin'],                    modulo: 'configuracoes' },
 ]
 
 const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', gestor: 'Gestor', profissional: 'Profissional' }
 
 function SidebarContent({
-  alertaCount, repassesAlerta, condominioAlerta, can, perfil, user, signOut, onNavClick,
+  alertaCount, repassesAlerta, condominioAlerta, can, podeVer, perfil, user, signOut, onNavClick,
 }: {
   alertaCount: number
   repassesAlerta: number
   condominioAlerta: number
   can: (roles: Role[]) => boolean
+  podeVer: (modulo: Modulo) => boolean
   perfil: { nome: string; role: Role } | null
   user: { email?: string } | null
   signOut: () => void
@@ -64,7 +67,7 @@ function SidebarContent({
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {nav.filter(item =>
           can(item.roles) &&
-          (!item.modulo || temAcessoModulo(item.modulo, user?.email))
+          (!item.modulo || podeVer(item.modulo))
         ).map(({ to, label, icon: Icon, badge }) => (
           <NavLink
             key={to}
@@ -157,15 +160,16 @@ function useDarkMode() {
 }
 
 export default function Layout() {
-  const { user, signOut }            = useAuth()
-  const { perfil, can }              = usePerfil()
+  const { user, signOut }              = useAuth()
+  const { perfil, can }                = usePerfil()
+  const { podeVer }                    = usePermissoes()
   const { data: alertaCount = 0 }      = useParcelasAlerta()
   const { data: repassesAlerta = 0 }   = useRepassesPendentesAlerta()
   const { data: condominioAlerta = 0 } = useCondominioAlerta()
-  const [drawerOpen, setDrawerOpen]  = useState(false)
-  const location                     = useLocation()
-  const { dark, toggle: toggleDark } = useDarkMode()
-  const { canInstall, install }      = usePWAInstall()
+  const [drawerOpen, setDrawerOpen]    = useState(false)
+  const location                       = useLocation()
+  const { dark, toggle: toggleDark }   = useDarkMode()
+  const { canInstall, install }        = usePWAInstall()
 
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])
   useEffect(() => {
@@ -173,7 +177,7 @@ export default function Layout() {
     return () => { document.body.style.overflow = '' }
   }, [drawerOpen])
 
-  const sidebarProps = { alertaCount, repassesAlerta, condominioAlerta, can, perfil, user, signOut }
+  const sidebarProps = { alertaCount, repassesAlerta, condominioAlerta, can, podeVer, perfil, user, signOut }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
