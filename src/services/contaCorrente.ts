@@ -14,6 +14,7 @@ export type StatusMovimentacao = 'pendente' | 'liquidado' | 'cancelado'
 export interface Movimentacao {
   id: string
   parceria_id: string
+  profissional_id?: string
   tipo: TipoMovimentacao
   categoria: CategoriaMovimentacao
   valor: number
@@ -23,6 +24,8 @@ export interface Movimentacao {
   status: StatusMovimentacao
   criado_por?: string
   created_at: string
+  // resolvido no cliente
+  profissional_nome?: string
 }
 
 export interface SaldoParceria {
@@ -49,7 +52,7 @@ export async function listarMovimentacoes(
 ): Promise<Movimentacao[]> {
   let q = supabase
     .from('movimentacoes_parceria')
-    .select('*')
+    .select('id, parceria_id, profissional_id, tipo, categoria, valor, descricao, referencia_id, competencia, status, criado_por, created_at')
     .order('created_at', { ascending: false })
 
   if (competencia) q = q.eq('competencia', competencia + '-01')
@@ -57,7 +60,23 @@ export async function listarMovimentacoes(
 
   const { data, error } = await q
   if (error) throw error
-  return data ?? []
+
+  const movs = (data ?? []) as Movimentacao[]
+
+  // Resolve nomes de profissionais (entradas de condomínio)
+  const profIds = [...new Set(movs.filter(m => m.profissional_id).map(m => m.profissional_id!))]
+  if (profIds.length > 0) {
+    const { data: profs } = await supabase
+      .from('user_profiles')
+      .select('id, nome')
+      .in('id', profIds)
+    const profMap = new Map((profs ?? []).map(p => [p.id, p.nome]))
+    movs.forEach(m => {
+      if (m.profissional_id) m.profissional_nome = profMap.get(m.profissional_id)
+    })
+  }
+
+  return movs
 }
 
 export async function listarSaldos(competencia?: string): Promise<SaldoParceria[]> {

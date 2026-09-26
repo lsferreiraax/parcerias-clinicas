@@ -846,3 +846,160 @@ export async function gerarRelatorioParcelas(
   rodape(doc, usuarioNome)
   doc.save(`parcelas_${new Date().toISOString().slice(0, 10)}.pdf`)
 }
+
+// ─── Demonstrativo de Condomínio ─────────────────────────────────────────────
+
+export interface DemonstrativoItemPDF {
+  profissionalNome: string
+  salaNome: string
+  valorMensalidade: number
+  valorRateio: number
+  total: number
+  status: string
+  despesasRateadas: { descricao: string; categoria: string; valor: number; percentual: number }[]
+}
+
+const STATUS_LABEL_PDF: Record<string, string> = {
+  pendente: 'Pendente',
+  pago:     'Pago',
+  isento:   'Isento',
+}
+
+export async function gerarDemonstrativoPDF(
+  competencia: string,   // 'YYYY-MM'
+  itens: DemonstrativoItemPDF[],
+  totalDespesas: number,
+  usuarioNome: string,
+) {
+  const logo = await logoBase64()
+  const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const largura = doc.internal.pageSize.getWidth()
+
+  const [y, m] = competencia.split('-')
+  const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+  const mesLabel = `${nomes[+m - 1]} ${y}`
+
+  let yPos = cabecalho(doc, logo, 'Demonstrativo de Condomínio Clínico', mesLabel)
+
+  // ── KPIs ──
+  const totalMensalidades = itens.reduce((s, i) => s + i.valorMensalidade, 0)
+  const totalRateio       = itens.reduce((s, i) => s + i.valorRateio, 0)
+  const totalGeral        = itens.reduce((s, i) => s + i.total, 0)
+  const pendentes         = itens.filter(i => i.status === 'pendente').length
+
+  doc.setFillColor(245, 247, 255)
+  doc.rect(14, yPos, largura - 28, 18, 'F')
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+
+  const kpis = [
+    { label: 'Profissionais', value: String(itens.length) },
+    { label: 'Mensalidades', value: fmt.moeda(totalMensalidades) },
+    { label: 'Total despesas', value: fmt.moeda(totalDespesas) },
+    { label: 'Total rateio', value: fmt.moeda(totalRateio) },
+    { label: 'Total geral', value: fmt.moeda(totalGeral) },
+    { label: 'Pendentes', value: String(pendentes) },
+  ]
+
+  const colW = (largura - 28) / kpis.length
+  kpis.forEach((k, i) => {
+    const x = 14 + i * colW + colW / 2
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(...COR_PRIMARIA as [number, number, number])
+    doc.text(k.value, x, yPos + 8, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(100, 100, 100)
+    doc.text(k.label, x, yPos + 14, { align: 'center' })
+  })
+
+  doc.setTextColor(0, 0, 0)
+  yPos += 24
+
+  // ── Tabela principal ──
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...COR_PRIMARIA as [number, number, number])
+  doc.text('Cobranças por Profissional', 14, yPos)
+  doc.setTextColor(0, 0, 0)
+
+  autoTable(doc, {
+    startY: yPos + 4,
+    head: [['Profissional', 'Sala', 'Mensalidade', 'Rateio', 'Total', 'Status']],
+    body: itens.map(i => [
+      i.profissionalNome,
+      i.salaNome,
+      fmt.moeda(i.valorMensalidade),
+      fmt.moeda(i.valorRateio),
+      fmt.moeda(i.total),
+      STATUS_LABEL_PDF[i.status] ?? i.status,
+    ]),
+    foot: [[
+      'TOTAL', '',
+      fmt.moeda(totalMensalidades),
+      fmt.moeda(totalRateio),
+      fmt.moeda(totalGeral),
+      `${pendentes} pendente(s)`,
+    ]],
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: COR_PRIMARIA as [number, number, number], textColor: [255, 255, 255], fontStyle: 'bold' },
+    footStyles: { fillColor: [230, 235, 255], textColor: COR_PRIMARIA as [number, number, number], fontStyle: 'bold' },
+    columnStyles: {
+      2: { halign: 'right' },
+      3: { halign: 'right' },
+      4: { halign: 'right' },
+      5: { halign: 'center' },
+    },
+    didDrawCell: (data) => {
+      if (data.section === 'body' && data.column.index === 5) {
+        const status = itens[data.row.index]?.status
+        if (status === 'pendente') doc.setTextColor(180, 70, 0)
+        else if (status === 'pago') doc.setTextColor(22, 163, 74)
+        else doc.setTextColor(100, 100, 100)
+      }
+    },
+    margin: { bottom: 20 },
+  })
+
+  const afterTable = (doc as any).lastAutoTable.finalY + 8
+
+  // ── Detalhamento de despesas ──
+  if (itens.some(i => i.despesasRateadas.length > 0)) {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...COR_PRIMARIA as [number, number, number])
+    doc.text('Detalhamento do Rateio', 14, afterTable)
+    doc.setTextColor(0, 0, 0)
+
+    const desp: string[][] = []
+    for (const item of itens) {
+      for (const d of item.despesasRateadas) {
+        desp.push([
+          item.profissionalNome,
+          d.descricao,
+          d.categoria === 'utilidade' ? 'Utilidade' : d.categoria === 'servico' ? 'Serviço' : 'Imposto',
+          `${d.percentual.toFixed(1)}%`,
+          fmt.moeda(d.valor),
+        ])
+      }
+    }
+
+    if (desp.length > 0) {
+      autoTable(doc, {
+        startY: afterTable + 4,
+        head: [['Profissional', 'Despesa', 'Categoria', '% Rateio', 'Valor']],
+        body: desp,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: COR_SECUNDARIA as [number, number, number], textColor: [255, 255, 255], fontStyle: 'bold' },
+        columnStyles: { 3: { halign: 'center' }, 4: { halign: 'right' } },
+        margin: { bottom: 20 },
+      })
+    }
+  }
+
+  rodape(doc, usuarioNome)
+  doc.save(`demonstrativo_condominio_${competencia}.pdf`)
+}

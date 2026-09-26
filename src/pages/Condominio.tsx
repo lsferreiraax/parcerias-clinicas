@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Building2, Plus, ChevronLeft, ChevronRight, Pencil, Trash2, CheckCircle, AlertCircle, Clock, X, BarChart2 } from 'lucide-react'
+import { Building2, Plus, ChevronLeft, ChevronRight, Pencil, Trash2, CheckCircle, AlertCircle, Clock, X, BarChart2, FileDown } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePerfil } from '@/contexts/PerfilContext'
+import { gerarDemonstrativoPDF } from '@/services/relatorio'
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/lib/supabase'
 import { listarSalas } from '@/services/salas'
@@ -316,6 +319,9 @@ type Aba = 'contratos' | 'despesas' | 'demonstrativo' | 'historico' | 'dashboard
 
 export default function Condominio() {
   const qc = useQueryClient()
+  const { user } = useAuth()
+  const { perfil } = usePerfil()
+  const nomeUsuario = perfil?.nome ?? user?.email ?? 'Admin'
   const [aba, setAba] = useState<Aba>('contratos')
   const [competencia, setCompetencia] = useState(hojeCompetencia)
   const [modalContrato, setModalContrato] = useState<'novo' | ContratoSala | null>(null)
@@ -593,9 +599,41 @@ export default function Condominio() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <NavCompetencia value={competencia} onChange={setCompetencia} />
             {demAtual?.status === 'fechado' && (
-              <span className="text-xs text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-3 py-1 rounded-full font-medium">
-                ✓ Fechado em {demAtual.fechado_em ? new Date(demAtual.fechado_em).toLocaleDateString('pt-BR') : '—'}
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-3 py-1 rounded-full font-medium">
+                  ✓ Fechado em {demAtual.fechado_em ? new Date(demAtual.fechado_em).toLocaleDateString('pt-BR') : '—'}
+                </span>
+                <button
+                  onClick={() => {
+                    const itensParaPDF = itensFechados.map(item => ({
+                      profissionalNome: item.profissional?.nome ?? '—',
+                      salaNome:         item.sala?.nome ?? '—',
+                      valorMensalidade: item.valor_mensalidade,
+                      valorRateio:      item.valor_rateio,
+                      total:            item.valor_mensalidade + item.valor_rateio,
+                      status:           item.status,
+                      despesasRateadas: (item.rateio ?? []).map((r: any) => {
+                        const desp = despesas.find(d => d.id === r.despesa_id)
+                        return {
+                          descricao:  desp?.descricao ?? r.despesa_id.slice(0, 8),
+                          categoria:  desp?.categoria ?? 'outro',
+                          valor:      r.valor,
+                          percentual: r.percentual,
+                        }
+                      }),
+                    }))
+                    gerarDemonstrativoPDF(
+                      competencia,
+                      itensParaPDF,
+                      despesas.reduce((s, d) => s + d.valor_total, 0),
+                      nomeUsuario,
+                    )
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-orange-200 dark:border-orange-800 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30 transition-colors"
+                >
+                  <FileDown size={13} /> Exportar PDF
+                </button>
+              </div>
             )}
           </div>
 

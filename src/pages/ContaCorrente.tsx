@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plus, TrendingUp, TrendingDown, CheckCircle, XCircle, Wallet, History } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Plus, TrendingUp, TrendingDown, CheckCircle, XCircle, Wallet, History, Building2, ExternalLink } from 'lucide-react'
 import { Card, Button, Modal, Input, Select, Badge } from '@/components/ui'
 import { fmt } from '@/lib/utils'
 import {
@@ -89,6 +90,11 @@ export default function ContaCorrente() {
 
   const totalSaldoPositivo = saldos.filter(s => s.saldo >= 0).reduce((acc, s) => acc + Number(s.saldo), 0)
   const totalSaldoNegativo = saldos.filter(s => s.saldo < 0).reduce((acc, s) => acc + Number(s.saldo), 0)
+
+  // Entradas de condomínio (profissional_id preenchido)
+  const movsCondominio = movimentacoes.filter(m => m.profissional_id)
+  const condPendentes  = movsCondominio.filter(m => m.status === 'pendente')
+  const condTotalPendente = condPendentes.reduce((s, m) => s + Number(m.valor), 0)
 
   return (
     <div className="space-y-6">
@@ -187,6 +193,27 @@ export default function ContaCorrente() {
         </div>
       )}
 
+      {/* Card resumo condomínio */}
+      {movsCondominio.length > 0 && (
+        <div className="rounded-xl border border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-900/20 p-4 flex items-center gap-4 flex-wrap">
+          <Building2 size={20} className="text-orange-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
+              Condomínio Clínico — {mesLabel}
+            </p>
+            <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+              {movsCondominio.length} cobrança(s) · {condPendentes.length} pendente(s) · total pendente: {fmt.moeda(condTotalPendente)}
+            </p>
+          </div>
+          <Link
+            to="/condominio"
+            className="flex items-center gap-1.5 text-xs font-medium text-orange-700 dark:text-orange-300 hover:underline"
+          >
+            Ver demonstrativo <ExternalLink size={12} />
+          </Link>
+        </div>
+      )}
+
       {/* Tabela de movimentações */}
       <Card>
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
@@ -215,7 +242,14 @@ export default function ContaCorrente() {
               <tbody className="divide-y divide-gray-100">
                 {movimentacoes.map(m => (
                   <tr key={m.id} className={`hover:bg-gray-50 ${m.status === 'cancelado' ? 'opacity-50' : ''}`}>
-                    <td className="px-4 py-3 font-medium">{parceiraLabel(m.parceria_id)}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {m.profissional_id ? (
+                        <span className="flex items-center gap-1.5">
+                          <Building2 size={13} className="text-orange-400 shrink-0" />
+                          <span>{m.profissional_nome ?? m.parceria_id.slice(0, 8) + '…'}</span>
+                        </span>
+                      ) : parceiraLabel(m.parceria_id)}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 font-medium ${
                         m.tipo === 'credito' ? 'text-green-600' : 'text-red-600'
