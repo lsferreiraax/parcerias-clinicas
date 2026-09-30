@@ -778,7 +778,7 @@ export async function gerarRelatorioParcelas(
     }
     partes.push(`Status: ${statusLabel[filtros.status] ?? filtros.status}`)
   }
-  if (filtros.parceria) partes.push(`Parceria: ${filtros.parceria}`)
+  if (filtros.parceria) partes.push(`Parceria: ${nomeParceria(filtros.parceria)}`)
   const subtitulo = partes.length ? partes.join('  |  ') : 'Todas as parcelas'
 
   const y = cabecalho(doc, logo, 'Relatório de Parcelas', subtitulo)

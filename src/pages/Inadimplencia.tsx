@@ -3,6 +3,8 @@ import { AlertCircle, FileDown, ChevronDown, ChevronUp } from 'lucide-react'
 import { Card, KpiCard, Badge, FiltroData } from '@/components/ui'
 import { useParcelas } from '@/hooks/useResumo'
 import { usePerfil } from '@/contexts/PerfilContext'
+import { useParcerias } from '@/hooks/useConfiguracoes'
+import { nomeParceria } from '@/lib/parcerias'
 import { gerarRelatorioInadimplencia } from '@/services/relatorio'
 import { fmt } from '@/lib/utils'
 import type { ParceriaId } from '@/types'
@@ -38,6 +40,7 @@ const GRAVIDADE_STYLE = {
 
 export default function Inadimplencia() {
   const { perfil } = usePerfil()
+  const { data: parcerias = [] } = useParcerias()
   const usuarioNome = perfil?.nome ?? 'Usuário'
 
   const hoje = useMemo(() => new Date().toISOString().split('T')[0], [])
@@ -169,8 +172,8 @@ export default function Inadimplencia() {
             className="text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1F3864]"
           >
             <option value="">Todas as parcerias</option>
-            {['A', 'B', 'C'].map(p => (
-              <option key={p} value={p}>Parceria {p}</option>
+            {parcerias.map(p => (
+              <option key={p.id} value={p.id}>{p.descricao}</option>
             ))}
           </select>
 
@@ -229,7 +232,7 @@ export default function Inadimplencia() {
                     <tr key={chave} className={`hover:bg-gray-50 cursor-pointer ${style.row}`} onClick={() => toggleExpandido(chave)}>
                       <td className="px-4 py-3 text-gray-400">{aberto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{g.paciente}</td>
-                      <td className="px-4 py-3"><Badge variant={g.parceriaId as ParceriaId}>Parceria {g.parceriaId}</Badge></td>
+                      <td className="px-4 py-3"><Badge variant={g.parceriaId as ParceriaId}>{nomeParceria(g.parceriaId)}</Badge></td>
                       <td className="px-4 py-3 text-gray-600">{g.parcelas.length} parcela(s)</td>
                       <td className="px-4 py-3 font-bold text-red-700">{fmt.moeda(g.valor_total)}</td>
                       <td className="px-4 py-3 font-semibold text-gray-800">{g.dias_max}d</td>
@@ -274,7 +277,7 @@ export default function Inadimplencia() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant={g.parceriaId as ParceriaId}>Parceria {g.parceriaId}</Badge>
+                    <Badge variant={g.parceriaId as ParceriaId}>{nomeParceria(g.parceriaId)}</Badge>
                     <span className="text-xs text-gray-500">{g.parcelas.length} parcela(s)</span>
                     <span className="text-xs text-gray-500">{g.dias_max}d de atraso</span>
                   </div>

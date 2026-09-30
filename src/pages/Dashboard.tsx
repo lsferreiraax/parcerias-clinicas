@@ -219,7 +219,7 @@ export default function Dashboard() {
                   <div key={m.id} className="space-y-1.5">
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium text-gray-700 dark:text-gray-300">
-                        Parceria {m.id} — {m.descricao}
+                        {m.descricao || m.id}
                       </span>
                       <div className="flex items-center gap-3">
                         <span className="text-gray-500 text-xs">{fmt.moeda(m.realizado)} / {fmt.moeda(m.meta_mensal)}</span>
