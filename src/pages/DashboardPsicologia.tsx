@@ -222,7 +222,7 @@ export default function DashboardPsicologia() {
                   </div>
                 )
               })}
-              <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">{modalidadeTotal} sessão{modalidadeTotal !== 1 ? 'ões' : ''} no período</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">{modalidadeTotal} {modalidadeTotal === 1 ? 'sessão' : 'sessões'} no período</p>
             </div>
           )}
         </div>
