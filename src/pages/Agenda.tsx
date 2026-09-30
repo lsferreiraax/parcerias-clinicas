@@ -38,7 +38,7 @@ const VAZIA: NovaSessao = {
 }
 
 export default function Agenda() {
-  const { perfil } = usePerfil()
+  const { perfil, isAdmin } = usePerfil()
   const [semanaRef, setSemanaRef] = useState(new Date())
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState<Sessao | null>(null)
@@ -305,7 +305,7 @@ export default function Agenda() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {editando ? 'Editar Sessão' : 'Nova Sessão'}
               </h2>
-              {editando && (
+              {editando && isAdmin && (
                 <button
                   onClick={() => { setConfirmarDeletar(editando.id); setModalAberto(false) }}
                   className="p-1.5 text-gray-400 hover:text-red-500 rounded transition-colors"
