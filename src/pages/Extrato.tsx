@@ -135,7 +135,7 @@ export default function Extrato() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Atendimentos"  value={linhas?.length ?? '—'}       color="border-l-[#2E75B6]" />
         <KpiCard label="Total a Receber" value={fmt.moeda(total)}          color="border-l-yellow-400" />
         <KpiCard label="Total Pago"    value={fmt.moeda(pagas)}            color="border-l-green-500" />
