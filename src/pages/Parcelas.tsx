@@ -3,6 +3,7 @@ import { CheckCircle, AlertCircle, CheckSquare, History, RefreshCw, FileDown, Re
 import { Card, Badge, KpiCard, FiltroData, Paginacao } from '@/components/ui'
 import { useParcelas, useMarcarParcelaPaga, useBaixarEmLote, useRenegociadas, useCancelarParcela } from '@/hooks/useResumo'
 import { usePerfil } from '@/contexts/PerfilContext'
+import { useParcerias } from '@/hooks/useConfiguracoes'
 import BaixaEmLote from '@/components/parcelas/BaixaEmLote'
 import HistoricoParcela from '@/components/parcelas/HistoricoParcela'
 import RenegociarParcela from '@/components/parcelas/RenegociarParcela'
@@ -14,6 +15,8 @@ export default function Parcelas() {
   const { isAdmin, isGestor, perfil } = usePerfil()
   const podeGerenciar = isAdmin || isGestor
   const usuarioNome   = perfil?.nome ?? 'Usuário'
+  const { data: parcerias = [] } = useParcerias()
+  const getParceriaLabel = (id: string) => parcerias.find(p => p.id === id)?.descricao || id
 
   const [aba, setAba]                     = useState<'parcelas' | 'renegociadas'>('parcelas')
   const [filtroStatus, setFiltroStatus]   = useState('')
@@ -195,7 +198,7 @@ export default function Parcelas() {
                 {(renegociadas ?? []).map(p => (
                   <tr key={p.id} className="hover:bg-amber-50/40">
                     <td className="px-4 py-3 font-medium">{p.paciente}</td>
-                    <td className="px-4 py-3"><Badge variant={p.parceria_id as ParceriaId}>Parceria {p.parceria_id}</Badge></td>
+                    <td className="px-4 py-3"><Badge variant={p.parceria_id as ParceriaId}>{getParceriaLabel(p.parceria_id)}</Badge></td>
                     <td className="px-4 py-3">{p.parcela_num}/{p.parcela_total}</td>
                     <td className="px-4 py-3">{fmt.data(p.data_vencimento)}</td>
                     <td className="px-4 py-3 font-semibold">{fmt.moeda(p.valor_parcela)}</td>
@@ -219,7 +222,7 @@ export default function Parcelas() {
               <div key={p.id} className="p-4 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold text-gray-900">{p.paciente}</span>
-                  <Badge variant={p.parceria_id as ParceriaId}>Parceria {p.parceria_id}</Badge>
+                  <Badge variant={p.parceria_id as ParceriaId}>{getParceriaLabel(p.parceria_id)}</Badge>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-sm">
                   <div>
@@ -328,7 +331,7 @@ export default function Parcelas() {
                       </td>
                     )}
                     <td className="px-4 py-3 font-medium">{paciente}</td>
-                    <td className="px-4 py-3"><Badge variant={(p.lancamentos?.parceria_id ?? 'A') as ParceriaId}>Parceria {p.lancamentos?.parceria_id}</Badge></td>
+                    <td className="px-4 py-3"><Badge variant={(p.lancamentos?.parceria_id ?? 'A') as ParceriaId}>{getParceriaLabel(p.lancamentos?.parceria_id ?? "")}</Badge></td>
                     <td className="px-4 py-3">{p.parcela_num}/{p.parcela_total}</td>
                     <td className={`px-4 py-3 ${vencida ? 'text-red-600 font-semibold' : ''}`}>{fmt.data(p.data_vencimento)}</td>
                     <td className="px-4 py-3 font-semibold">{fmt.moeda(p.valor_parcela)}</td>
@@ -373,7 +376,7 @@ export default function Parcelas() {
                       <input type="checkbox" checked={selecionados.has(p.id)} onChange={() => toggleSelecionado(p.id)} className="rounded mt-0.5" />
                     )}
                     <span className="font-semibold text-gray-900">{paciente}</span>
-                    <Badge variant={(p.lancamentos?.parceria_id ?? 'A') as ParceriaId}>Parceria {p.lancamentos?.parceria_id}</Badge>
+                    <Badge variant={(p.lancamentos?.parceria_id ?? 'A') as ParceriaId}>{getParceriaLabel(p.lancamentos?.parceria_id ?? "")}</Badge>
                   </div>
                   {badgeStatus(p)}
                 </div>

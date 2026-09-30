@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FileDown, FileText, AlertTriangle, TrendingUp, ArrowLeftRight, CreditCard } from 'lucide-react'
 import { Card, Button, FiltroData } from '@/components/ui'
 import { useLancamentos } from '@/hooks/useLancamentos'
+import { useParcerias } from '@/hooks/useConfiguracoes'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { usePerfil } from '@/contexts/PerfilContext'
@@ -13,8 +14,8 @@ import {
   exportarRepassesMensalExcel,
   gerarRelatorioParcelas,
 } from '@/services/relatorio'
-import type { ParceriaId } from '@/types'
 
+// 'vencido' não é gravado no banco: é pendente com vencimento anterior a hoje
 function useParcelas(status?: string) {
   return useQuery({
     queryKey: ['parcelas-relatorio', status],
@@ -23,7 +24,8 @@ function useParcelas(status?: string) {
         .from('parcelas')
         .select('*, lancamentos(paciente, parceria_id)')
         .order('data_vencimento', { ascending: true })
-      if (status) q = q.eq('status', status)
+      if (status === 'vencido') q = q.eq('status', 'pendente').lt('data_vencimento', new Date().toISOString().split('T')[0])
+      else if (status) q = q.eq('status', status)
       const { data, error } = await q
       if (error) throw error
       return data
@@ -32,6 +34,7 @@ function useParcelas(status?: string) {
 }
 
 export default function Relatorios() {
+  const { data: parcerias = [] } = useParcerias()
   const { perfil } = usePerfil()
   const usuarioNome = perfil?.nome ?? 'Usuário'
 
@@ -75,7 +78,8 @@ export default function Relatorios() {
         .from('parcelas')
         .select('*, lancamentos(paciente, parceria_id)')
         .order('data_vencimento', { ascending: true })
-      if (filtrosParcelas.status)      q = q.eq('status', filtrosParcelas.status)
+      if (filtrosParcelas.status === 'vencido') q = q.eq('status', 'pendente').lt('data_vencimento', new Date().toISOString().split('T')[0])
+      else if (filtrosParcelas.status) q = q.eq('status', filtrosParcelas.status)
       if (filtrosParcelas.dataInicio)  q = q.gte('data_vencimento', filtrosParcelas.dataInicio)
       if (filtrosParcelas.dataFim)     q = q.lte('data_vencimento', filtrosParcelas.dataFim)
       if (filtrosParcelas.parceria) {
@@ -203,7 +207,7 @@ export default function Relatorios() {
                 className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 onChange={e => setFiltrosLanc(f => ({ ...f, parceria: e.target.value || undefined }))}>
                 <option value="">Todas</option>
-                {(['A','B','C'] as ParceriaId[]).map(p => <option key={p} value={p}>Parceria {p}</option>)}
+                {parcerias.map(p => <option key={p.id} value={p.id}>{p.descricao}</option>)}
               </select>
             </div>
             <FiltroData
@@ -293,7 +297,7 @@ export default function Relatorios() {
                 value={filtrosParcelas.parceria ?? ''}
                 onChange={e => setFiltrosParcelas(f => ({ ...f, parceria: e.target.value || undefined }))}>
                 <option value="">Todas</option>
-                {(['A','B','C'] as ParceriaId[]).map(p => <option key={p} value={p}>Parceria {p}</option>)}
+                {parcerias.map(p => <option key={p.id} value={p.id}>{p.descricao}</option>)}
               </select>
             </div>
             <FiltroData

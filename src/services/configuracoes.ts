@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { registrarParcerias } from '@/lib/parcerias'
 import type { Configuracao, ParceriaCompleta, Profissional } from '@/types'
 
 // ── Configurações ──────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ export async function listarParcerias(): Promise<ParceriaCompleta[]> {
     .select('*')
     .order('id')
   if (error) throw error
+  registrarParcerias(data as ParceriaCompleta[])
   return data as ParceriaCompleta[]
 }
 

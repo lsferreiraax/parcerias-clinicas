@@ -2,6 +2,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import { fmt } from '@/lib/utils'
+import { nomeParceria } from '@/lib/parcerias'
 import type { Repasse, TipoRepasse, ResumoParceria, ResumoProfissional } from '@/types'
 import type { ParcelaRenegociada } from '@/services/parcelas'
 
@@ -115,7 +116,7 @@ export async function gerarRelatorioResumo(
     startY: y + 8,
     head: [['Parceria', 'Descrição', 'Atend.', 'Valor Total', 'Camta', 'Médico', 'Psi 1', 'Psi 2']],
     body: parcerias.map(r => [
-      `Parceria ${r.parceria}`,
+      nomeParceria(r.parceria),
       r.descricao,
       r.total_atendimentos,
       fmt.moeda(Number(r.valor_total)),
@@ -191,7 +192,7 @@ export async function gerarRelatorioLancamentos(
     ? `Até ${fmt.data(filtros.dataFim)}`
     : 'Todos os períodos'
 
-  const subtitulo = `${periodo}${filtros.parceria ? ` · Parceria ${filtros.parceria}` : ''}`
+  const subtitulo = `${periodo}${filtros.parceria ? ` · ${nomeParceria(filtros.parceria)}` : ''}`
   const startY    = cabecalho(doc, logo, 'Relatório de Lançamentos', subtitulo)
 
   const totalGeral   = lancamentos.reduce((s, l) => s + Number(l.valor_total), 0)
@@ -207,7 +208,7 @@ export async function gerarRelatorioLancamentos(
       fmt.data(l.data_atendimento),
       l.paciente,
       l.nome_responsavel ?? '—',
-      `Parceria ${l.parceria_id}`,
+      nomeParceria(l.parceria_id),
       l.forma_pagamento === 'avista' ? 'À Vista' : `${l.num_parcelas}x`,
       (l.meio_pagamento ?? []).map((m: string) => ({
         cartao_credito: 'Cartão',
@@ -263,7 +264,7 @@ export async function gerarRelatorioInadimplencia(
       return [
         fmt.data(p.data_vencimento),
         p.lancamentos?.paciente ?? '—',
-        `Parceria ${p.lancamentos?.parceria_id ?? '—'}`,
+        nomeParceria(p.lancamentos?.parceria_id),
         `${p.parcela_num}/${p.parcela_total}`,
         fmt.moeda(p.valor_parcela),
         p.status,
@@ -307,7 +308,7 @@ export async function gerarRelatorioRateio(
     const medico = ls.reduce((s, l) => s + Number(l.medico_valor ?? 0), 0)
     const psi1   = ls.reduce((s, l) => s + Number(l.psi1_valor   ?? 0), 0)
     const psi2   = ls.reduce((s, l) => s + Number(l.psi2_valor   ?? 0), 0)
-    return [`Parceria ${parc}`, ls.length, fmt.moeda(tot), fmt.moeda(camta), fmt.moeda(medico), fmt.moeda(psi1), fmt.moeda(psi2)]
+    return [nomeParceria(parc), ls.length, fmt.moeda(tot), fmt.moeda(camta), fmt.moeda(medico), fmt.moeda(psi1), fmt.moeda(psi2)]
   })
 
   const totGeral  = lancamentos.reduce((s, l) => s + Number(l.valor_total),  0)
@@ -342,7 +343,7 @@ export async function gerarRelatorioRateio(
     body: lancamentos.map(l => [
       fmt.data(l.data_atendimento),
       l.paciente,
-      `Parceria ${l.parceria_id}`,
+      nomeParceria(l.parceria_id),
       fmt.moeda(l.valor_total),
       l.camta_valor  > 0 ? fmt.moeda(l.camta_valor)  : '—',
       l.medico_valor > 0 ? fmt.moeda(l.medico_valor) : '—',
@@ -397,7 +398,7 @@ export async function gerarRelatorioRepasse(
     body: repasses.map(r => [
       r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—',
       r.lancamentos?.paciente ?? '—',
-      r.lancamentos?.parceria_id ? `Parceria ${r.lancamentos.parceria_id}` : '—',
+      r.lancamentos?.parceria_id ? nomeParceria(r.lancamentos.parceria_id) : '—',
       r.lancamentos?.data_pagamento ? fmt.data(r.lancamentos.data_pagamento) : '—',
       fmt.moeda(Number(r.valor_original)),
       fmt.moeda(Number(r.valor_repasse)),
@@ -501,7 +502,7 @@ export async function gerarRelatorioMensalRepasses(
       body: lista.map((r: any) => [
         r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—',
         r.lancamentos?.paciente ?? '—',
-        r.lancamentos?.parceria_id ? `Parceria ${r.lancamentos.parceria_id}` : '—',
+        r.lancamentos?.parceria_id ? nomeParceria(r.lancamentos.parceria_id) : '—',
         fmt.moeda(Number(r.valor_original)),
         fmt.moeda(Number(r.valor_repasse)),
         r.status === 'conciliado' ? 'Conciliado' : 'Pendente',
@@ -564,7 +565,7 @@ export function exportarRepassesMensalExcel(repasses: any[], mes: string) {
     const linhas = lista.map((r: any) => ({
       'Dt. Atendimento': r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—',
       'Paciente':        r.lancamentos?.paciente ?? '—',
-      'Parceria':        r.lancamentos?.parceria_id ? `Parceria ${r.lancamentos.parceria_id}` : '—',
+      'Parceria':        r.lancamentos?.parceria_id ? nomeParceria(r.lancamentos.parceria_id) : '—',
       'Valor Original':  Number(r.valor_original),
       'Valor Repasse':   Number(r.valor_repasse),
       'Situação':        r.status === 'conciliado' ? 'Conciliado' : 'Pendente',
@@ -594,7 +595,7 @@ export async function gerarRelatorioRenegociacoes(
     head: [['Paciente', 'Parceria', 'Parcela', 'Novo Vencimento', 'Valor', 'Data Renegociação', 'Motivo']],
     body: renegociadas.map(p => [
       p.paciente,
-      `Parceria ${p.parceria_id}`,
+      nomeParceria(p.parceria_id),
       `${p.parcela_num}/${p.parcela_total}`,
       fmt.data(p.data_vencimento),
       fmt.moeda(p.valor_parcela),
@@ -671,7 +672,7 @@ export async function gerarComprovante(
   const col1 = boxX + 6, col2 = col1 + 70, col3 = col2 + 60
   campo('Paciente',        linha.paciente,                                    col1, boxY + 18)
   campo('Data Atendimento', fmt.data(linha.data_atendimento),                 col2, boxY + 18)
-  campo('Parceria',        `Parceria ${linha.parceria_id}`,                   col3, boxY + 18)
+  campo('Parceria',        nomeParceria(linha.parceria_id),                   col3, boxY + 18)
   campo('Forma Pagamento', linha.forma_pagamento === 'avista' ? 'À Vista' : 'Parcelado', col1, boxY + 34)
   campo('Status',          linha.status.charAt(0).toUpperCase() + linha.status.slice(1), col2, boxY + 34)
   campo('Profissional',    profLabel,                                         col3, boxY + 34)
@@ -723,7 +724,7 @@ export function exportarRepasseExcel(repasses: Repasse[], tipo: TipoRepasse) {
   const linhas = repasses.map(r => ({
     'Dt. Atendimento':  r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—',
     'Paciente':         r.lancamentos?.paciente ?? '—',
-    'Parceria':         r.lancamentos?.parceria_id ? `Parceria ${r.lancamentos.parceria_id}` : '—',
+    'Parceria':         r.lancamentos?.parceria_id ? nomeParceria(r.lancamentos.parceria_id) : '—',
     'Dt. Pagamento':    r.lancamentos?.data_pagamento ? fmt.data(r.lancamentos.data_pagamento) : '—',
     'Valor Original':   Number(r.valor_original),
     'Valor Repasse':    Number(r.valor_repasse),
@@ -816,7 +817,7 @@ export async function gerarRelatorioParcelas(
       const [ano, mes, dia] = (p.data_vencimento ?? '').split('-')
       return [
         lanc?.paciente ?? '—',
-        lanc?.parceria_id ? `Parceria ${lanc.parceria_id}` : '—',
+        lanc?.parceria_id ? nomeParceria(lanc.parceria_id) : '—',
         `${p.parcela_num}/${p.parcela_total}`,
         dia && mes && ano ? `${dia}/${mes}/${ano}` : '—',
         p.data_pagamento ? fmt.data(p.data_pagamento) : '—',
