@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { anexarPacientesEProfissionais } from '@/services/juncoesPsicologia'
 
 export type ModalidadeSessao = 'presencial' | 'online'
 export type StatusSessao = 'agendada' | 'realizada' | 'cancelada' | 'faltou'
@@ -58,7 +59,7 @@ export async function listarSessoes(
   let q = supabase
     .schema('psicologia')
     .from('sessoes')
-    .select('*, pacientes(nome), profissionais(nome, tipo)')
+    .select('*')
     .gte('data_sessao', dataInicio)
     .lte('data_sessao', dataFim)
     .order('data_sessao')
@@ -68,7 +69,7 @@ export async function listarSessoes(
 
   const { data, error } = await q
   if (error) throw error
-  return data ?? []
+  return anexarPacientesEProfissionais((data ?? []) as Sessao[])
 }
 
 export async function criarSessao(dados: NovaSessao): Promise<Sessao> {
@@ -76,10 +77,11 @@ export async function criarSessao(dados: NovaSessao): Promise<Sessao> {
     .schema('psicologia')
     .from('sessoes')
     .insert(dados)
-    .select('*, pacientes(nome), profissionais(nome, tipo)')
+    .select('*')
     .single()
   if (error) throw error
-  return data
+  const [comNomes] = await anexarPacientesEProfissionais([data as Sessao])
+  return comNomes
 }
 
 export async function atualizarSessao(id: string, dados: Partial<NovaSessao>): Promise<Sessao> {
@@ -88,10 +90,11 @@ export async function atualizarSessao(id: string, dados: Partial<NovaSessao>): P
     .from('sessoes')
     .update(dados)
     .eq('id', id)
-    .select('*, pacientes(nome), profissionais(nome, tipo)')
+    .select('*')
     .single()
   if (error) throw error
-  return data
+  const [comNomes] = await anexarPacientesEProfissionais([data as Sessao])
+  return comNomes
 }
 
 export async function deletarSessao(id: string): Promise<void> {

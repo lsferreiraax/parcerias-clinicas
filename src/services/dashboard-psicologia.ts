@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { nomesPacientes } from '@/services/juncoesPsicologia'
 import { StatusSessao } from '@/services/sessoes'
 
 export interface KpisPsicologia {
@@ -94,7 +95,7 @@ export async function getDashboardPsicologia(): Promise<DashboardPsicologiaData>
     supabase
       .schema('psicologia')
       .from('sessoes')
-      .select('id, data_sessao, hora_inicio, modalidade, pacientes(nome)')
+      .select('id, data_sessao, hora_inicio, modalidade, paciente_id')
       .eq('status', 'agendada')
       .gte('data_sessao', hoje.toISOString().slice(0, 10))
       .lte('data_sessao', fimProximas.toISOString().slice(0, 10))
@@ -106,6 +107,7 @@ export async function getDashboardPsicologia(): Promise<DashboardPsicologiaData>
   const historicoRows = sessoesHistorico ?? []
   const mesRows = sessoesMes ?? []
   const proximasRows = proximas ?? []
+  const nomesProximas = await nomesPacientes(proximasRows.map(r => r.paciente_id))
 
   // KPIs do mês
   const realizadas = mesRows.filter(r => r.status === 'realizada')
@@ -157,7 +159,7 @@ export async function getDashboardPsicologia(): Promise<DashboardPsicologiaData>
     data_sessao: r.data_sessao,
     hora_inicio: r.hora_inicio,
     modalidade: r.modalidade,
-    paciente_nome: r.pacientes?.nome ?? '—',
+    paciente_nome: nomesProximas.get(r.paciente_id)?.nome ?? '—',
   }))
 
   return {
