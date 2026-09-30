@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { useSessoes, useCriarSessao, useAtualizarSessao, useDeletarSessao } from '@/hooks/useSessoes'
 import { usePacientes } from '@/hooks/usePacientes'
+import { useProfissionais } from '@/hooks/useConfiguracoes'
 import { useQuery } from '@tanstack/react-query'
 import { listarParcerias } from '@/services/configuracoes'
 import {
@@ -51,6 +52,7 @@ export default function Agenda() {
 
   const { data: sessoes = [], isLoading } = useSessoes(formatarData(inicio), formatarData(fim))
   const { data: pacientes = [] } = usePacientes()
+  const { data: profissionais = [] } = useProfissionais()
   const { data: parcerias = [] } = useQuery({ queryKey: ['parcerias'], queryFn: listarParcerias })
   const { data: salas = [] } = useQuery({ queryKey: ['salas', false], queryFn: () => listarSalas(true) })
   const criar = useCriarSessao()
@@ -112,6 +114,11 @@ export default function Agenda() {
 
   async function salvar() {
     setErroConflito('')
+
+    if (!form.profissional_id) {
+      setErroConflito('Selecione o profissional da sessão.')
+      return
+    }
 
     const dados: NovaSessao = {
       ...form,
@@ -323,6 +330,26 @@ export default function Agenda() {
                   {pacientes.map(p => (
                     <option key={p.id} value={p.id}>{p.nome}</option>
                   ))}
+                </select>
+              </div>
+
+              {/* Profissional: fixo no próprio vínculo para quem é profissional */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Profissional <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={form.profissional_id ?? ''}
+                  disabled={!!perfil?.profissional_id}
+                  onChange={e => setForm(f => ({ ...f, profissional_id: e.target.value || undefined }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
+                >
+                  <option value="">Selecione o profissional</option>
+                  {profissionais
+                    .filter(p => p.ativo || p.id === form.profissional_id)
+                    .map(p => (
+                      <option key={p.id} value={p.id}>{p.nome}</option>
+                    ))}
                 </select>
               </div>
 
