@@ -31,7 +31,6 @@ import GradeSalas from '@/pages/GradeSalas'
 import Condominio from '@/pages/Condominio'
 import Perfis from '@/pages/Perfis'
 import SemAcesso from '@/pages/SemAcesso'
-import ModuloGuard from '@/components/auth/ModuloGuard'
 import './index.css'
 
 const qc = new QueryClient({
@@ -53,98 +52,98 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 <Route element={<ProtectedRoute />}>
                   <Route element={<Layout />}>
                     <Route index              element={
-                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                      <RoleGuard modulo="parcerias" roles={['admin', 'gestor']} redirect="/extrato">
                         <Dashboard />
                       </RoleGuard>
                     } />
                     <Route path="lancamentos" element={
-                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                      <RoleGuard modulo="parcerias" roles={['admin', 'gestor']} redirect="/extrato">
                         <Lancamentos />
                       </RoleGuard>
                     } />
                     <Route path="parcelas"    element={
-                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                      <RoleGuard modulo="parcerias" roles={['admin', 'gestor']} redirect="/extrato">
                         <Parcelas />
                       </RoleGuard>
                     } />
                     <Route path="inadimplencia" element={
-                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                      <RoleGuard modulo="parcerias" roles={['admin', 'gestor']} redirect="/extrato">
                         <Inadimplencia />
                       </RoleGuard>
                     } />
                     <Route path="resumo"      element={
-                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                      <RoleGuard modulo="parcerias" roles={['admin', 'gestor']} redirect="/extrato">
                         <Resumo />
                       </RoleGuard>
                     } />
                     <Route path="extrato"     element={<Extrato />} />
                     <Route path="usuarios"    element={
-                      <RoleGuard roles={['admin']} redirect="/">
+                      <RoleGuard modulo="usuarios" roles={['admin']} redirect="/">
                         <Usuarios />
                       </RoleGuard>
                     } />
                     <Route path="repasses" element={
-                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                      <RoleGuard modulo="parcerias" roles={['admin', 'gestor']} redirect="/extrato">
                         <Repasses />
                       </RoleGuard>
                     } />
                     <Route path="relatorios" element={
-                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                      <RoleGuard modulo="relatorios" roles={['admin', 'gestor']} redirect="/extrato">
                         <Relatorios />
                       </RoleGuard>
                     } />
                     <Route path="conta-corrente" element={
-                      <RoleGuard roles={['admin', 'gestor']} redirect="/extrato">
+                      <RoleGuard modulo="conta_corrente" roles={['admin', 'gestor']} redirect="/extrato">
                         <ContaCorrente />
                       </RoleGuard>
                     } />
                     <Route path="pacientes" element={
-                      <ModuloGuard modulo="psicologia" roles={['admin', 'gestor', 'profissional']} redirect="/">
+                      <RoleGuard modulo="psicologia" roles={['admin', 'gestor', 'profissional']} redirect="/">
                         <Pacientes />
-                      </ModuloGuard>
+                      </RoleGuard>
                     } />
                     <Route path="agenda" element={
-                      <ModuloGuard modulo="psicologia" roles={['admin', 'gestor', 'profissional']} redirect="/">
+                      <RoleGuard modulo="psicologia" roles={['admin', 'gestor', 'profissional']} redirect="/">
                         <Agenda />
-                      </ModuloGuard>
+                      </RoleGuard>
                     } />
                     <Route path="prontuario" element={
-                      <ModuloGuard modulo="psicologia" roles={['profissional']} redirect="/">
+                      <RoleGuard modulo="psicologia" roles={['profissional']} redirect="/">
                         <Prontuario />
-                      </ModuloGuard>
+                      </RoleGuard>
                     } />
                     <Route path="dashboard-psicologia" element={
-                      <ModuloGuard modulo="psicologia" roles={['admin', 'gestor', 'profissional']} redirect="/">
+                      <RoleGuard modulo="psicologia" roles={['admin', 'gestor', 'profissional']} redirect="/">
                         <DashboardPsicologia />
-                      </ModuloGuard>
+                      </RoleGuard>
                     } />
                     <Route path="titular-dados" element={
-                      <ModuloGuard modulo="psicologia" roles={['admin']} redirect="/">
+                      <RoleGuard modulo="psicologia" roles={['admin']} redirect="/">
                         <TitularDados />
-                      </ModuloGuard>
+                      </RoleGuard>
                     } />
                     <Route path="salas" element={
-                      <ModuloGuard modulo="psicologia" roles={['admin']} redirect="/">
+                      <RoleGuard modulo="salas" roles={['admin']} redirect="/">
                         <Salas />
-                      </ModuloGuard>
+                      </RoleGuard>
                     } />
                     <Route path="grade-salas" element={
-                      <ModuloGuard modulo="psicologia" roles={['admin', 'gestor']} redirect="/">
+                      <RoleGuard modulo="salas" roles={['admin', 'gestor']} redirect="/">
                         <GradeSalas />
-                      </ModuloGuard>
+                      </RoleGuard>
                     } />
                     <Route path="condominio" element={
-                      <ModuloGuard modulo="psicologia" roles={['admin']} redirect="/">
+                      <RoleGuard modulo="condominio" roles={['admin']} redirect="/">
                         <Condominio />
-                      </ModuloGuard>
+                      </RoleGuard>
                     } />
                     <Route path="configuracoes" element={
-                      <RoleGuard roles={['admin']} redirect="/">
+                      <RoleGuard modulo="configuracoes" roles={['admin']} redirect="/">
                         <Configuracoes />
                       </RoleGuard>
                     } />
                     <Route path="perfis" element={
-                      <RoleGuard roles={['admin']} redirect="/">
+                      <RoleGuard modulo="usuarios" roles={['admin']} redirect="/">
                         <Perfis />
                       </RoleGuard>
                     } />
