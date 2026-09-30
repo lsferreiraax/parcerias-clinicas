@@ -104,28 +104,45 @@ export async function uuidsNoMain(page: Page, ocultarSeletores: string[] = []): 
   return acharUuids(await textoDoMain(page, ocultarSeletores))
 }
 
-/** Rolagem horizontal: da página e do contêiner de conteúdo (main > div.overflow-auto), com os elementos que excedem a largura da tela. */
+/**
+ * Rolagem horizontal: da página e do contêiner de conteúdo (main > div.overflow-auto).
+ * `ofensores` lista (1) elementos que passam da largura da tela e NÃO estão dentro de um contêiner com rolagem própria
+ * (tabelas em overflow-x-auto são legítimas) e (2) elementos cujo conteúdo é maior que a própria caixa sem rolagem própria.
+ */
 export async function rolagemHorizontal(page: Page): Promise<{ pagina: number; conteudo: number; ofensores: string[] }> {
   return page.evaluate(() => {
     const de = document.documentElement
+    const main = document.querySelector('main')
     const cont = document.querySelector('main .overflow-auto') as HTMLElement | null
     const largura = de.clientWidth
-    const ofensores: { txt: string; px: number }[] = []
+    const descreve = (el: Element) => {
+      const cls = ((el as HTMLElement).className?.toString() ?? '').split(/\s+/).filter(Boolean).slice(0, 3).join('.')
+      const texto = ((el as HTMLElement).innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 30)
+      return `${el.tagName.toLowerCase()}${cls ? '.' + cls : ''} "${texto}"`
+    }
+    const clipado = (el: Element) => {
+      for (let a = el.parentElement; a && a !== main && a !== cont; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX !== 'visible') return true
+      }
+      return false
+    }
+    const achados: { txt: string; px: number }[] = []
     document.querySelectorAll('main *').forEach(el => {
-      const r = (el as HTMLElement).getBoundingClientRect()
+      const h = el as HTMLElement
+      const r = h.getBoundingClientRect()
       if (r.width === 0 || r.height === 0) return
-      const px = Math.round(r.right - largura)
-      if (px > 1) {
-        const cls = ((el as HTMLElement).className?.toString() ?? '').split(/\s+/).filter(Boolean).slice(0, 3).join('.')
-        const texto = ((el as HTMLElement).innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 30)
-        ofensores.push({ txt: `${el.tagName.toLowerCase()}${cls ? '.' + cls : ''} "${texto}" +${px}px`, px })
+      const fora = Math.round(r.right - largura)
+      if (fora > 1 && !clipado(el)) achados.push({ txt: `${descreve(el)} passa ${fora}px da tela`, px: fora })
+      const interno = h.scrollWidth - h.clientWidth
+      if (interno > 1 && h.clientWidth > 0 && getComputedStyle(h).overflowX === 'visible') {
+        achados.push({ txt: `${descreve(el)} conteúdo ${interno}px maior que a caixa`, px: interno })
       }
     })
-    ofensores.sort((a, b) => b.px - a.px)
+    achados.sort((x, y) => y.px - x.px)
     return {
       pagina: Math.max(0, de.scrollWidth - de.clientWidth),
       conteudo: cont ? Math.max(0, cont.scrollWidth - cont.clientWidth) : 0,
-      ofensores: ofensores.slice(0, 5).map(o => o.txt),
+      ofensores: achados.slice(0, 6).map(o => o.txt),
     }
   })
 }
