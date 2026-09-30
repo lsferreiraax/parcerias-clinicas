@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { nomesPacientes } from '@/services/juncoesPsicologia'
 
 export type TipoProntuario = 'anamnese' | 'evolucao' | 'alta' | 'outro'
 
@@ -42,7 +43,7 @@ export async function listarProntuarios(paciente_id?: string): Promise<Prontuari
   let q = supabase
     .schema('psicologia')
     .from('prontuarios')
-    .select('*, paciente:pacientes(nome)')
+    .select('*')
     .order('data_registro', { ascending: false })
     .order('created_at', { ascending: false })
 
@@ -50,18 +51,22 @@ export async function listarProntuarios(paciente_id?: string): Promise<Prontuari
 
   const { data, error } = await q
   if (error) throw error
-  return (data ?? []) as Prontuario[]
+  const rows = (data ?? []) as Prontuario[]
+  const pacientes = await nomesPacientes(rows.map(r => r.paciente_id))
+  return rows.map(r => ({ ...r, paciente: pacientes.get(r.paciente_id) }))
 }
 
 export async function obterProntuario(id: string): Promise<Prontuario> {
   const { data, error } = await supabase
     .schema('psicologia')
     .from('prontuarios')
-    .select('*, paciente:pacientes(nome)')
+    .select('*')
     .eq('id', id)
     .single()
   if (error) throw error
-  return data as Prontuario
+  const pront = data as Prontuario
+  const pacientes = await nomesPacientes([pront.paciente_id])
+  return { ...pront, paciente: pacientes.get(pront.paciente_id) }
 }
 
 export async function criarProntuario(dados: NovoProntuario & { criado_por: string }): Promise<Prontuario> {

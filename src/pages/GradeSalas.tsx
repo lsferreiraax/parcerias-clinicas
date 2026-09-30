@@ -5,6 +5,7 @@ import { listarSalas } from '@/services/salas'
 import { listarBloqueios } from '@/services/bloqueiosSala'
 import { supabase } from '@/lib/supabase'
 import type { Sessao } from '@/services/sessoes'
+import { anexarPacientes } from '@/services/juncoesPsicologia'
 
 // ─── constantes ─────────────────────────────────────────────────────────────
 
@@ -82,13 +83,13 @@ export default function GradeSalas() {
       const { data: rows, error } = await supabase
         .schema('psicologia')
         .from('sessoes')
-        .select('*, pacientes(nome)')
+        .select('*')
         .eq('data_sessao', data)
         .not('sala_id', 'is', null)
         .neq('status', 'cancelada')
         .order('hora_inicio')
       if (error) throw error
-      return (rows ?? []) as Sessao[]
+      return (await anexarPacientes((rows ?? []) as Sessao[])) as Sessao[]
     },
   })
 
