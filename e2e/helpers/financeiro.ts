@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { campo, modalAberto, abrirRota } from './ui'
 
 export interface DadosLancamento {
@@ -31,6 +31,14 @@ export async function filtrarParcelas(page: Page, paciente: string) {
   const linhas = page.locator('table tbody tr', { hasText: paciente })
   await linhas.first().waitFor()
   return linhas
+}
+
+/**
+ * Linha da parcela `num/total` dentro das linhas do paciente. Não usar regex sobre o texto da linha:
+ * as células são concatenadas sem separador ("Mental1/3") e `\b` não casa; usa a célula exata "1/3".
+ */
+export function linhaParcela(linhas: Locator, num: number, total = 3): Locator {
+  return linhas.filter({ has: linhas.page().getByRole('cell', { name: `${num}/${total}`, exact: true }) })
 }
 
 export const ROTULO_ABA_REPASSE: Record<string, string> = { medico: 'Médico', camta: 'Camta', psi1: 'Psi 1', psi2: 'Psi 2' }

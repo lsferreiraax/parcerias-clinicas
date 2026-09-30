@@ -27,7 +27,8 @@ test.describe('Admin: tela Usuários', () => {
     })
     const escritas: string[] = []
     page.on('request', r => {
-      if (['PATCH', 'POST', 'DELETE', 'PUT'].includes(r.method()) && r.url().includes('/rest/v1/')) escritas.push(`${r.method()} ${r.url()}`)
+      // RPC via POST (ex.: listar_perfis_com_email) é LEITURA; só conta escrita em tabela (/rest/v1/<tabela>).
+      if (['PATCH', 'POST', 'DELETE', 'PUT'].includes(r.method()) && r.url().includes('/rest/v1/') && !r.url().includes('/rest/v1/rpc/')) escritas.push(`${r.method()} ${r.url()}`)
     })
 
     await page.goto('/usuarios')

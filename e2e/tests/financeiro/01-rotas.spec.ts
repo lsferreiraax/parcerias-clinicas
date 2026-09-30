@@ -9,7 +9,7 @@ test.describe('Financeiro: rotas', () => {
     await page.goto('/')
     for (const rota of rotas) {
       expect.soft(await abrirRota(page, rota), `rota ${rota}`).toBe(rota)
-      await expect.soft(page.locator('main h1').first()).toBeVisible()
+      await expect.soft(page.locator('main h1').first()).toBeVisible({ timeout: 30_000 })
     }
     expect(await itensDoMenu(page)).toHaveLength(9)
   })

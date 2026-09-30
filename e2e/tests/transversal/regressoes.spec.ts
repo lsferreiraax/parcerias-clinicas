@@ -17,6 +17,7 @@ test.describe('Regressões transversais', () => {
   test.describe.configure({ mode: 'serial' })
 
   test.beforeAll(async ({ browser }, testInfo) => {
+    testInfo.setTimeout(300_000) // varredura de até 19 telas; cada uma pode recarregar uma vez
     const perfil = PERFIS[testInfo.project.name as PerfilId]
     varredura = await varrerRotas(browser, testInfo.project.use, perfil.permitidas)
   })

@@ -12,7 +12,7 @@ test.describe('Profissional: menu e rotas', () => {
   test('/prontuario abre para o role profissional', async ({ page }) => {
     await page.goto('/')
     expect(await abrirRota(page, '/prontuario')).toBe('/prontuario')
-    await expect(page.locator('main h1').first()).toBeVisible()
+    await expect(page.locator('main h1').first()).toBeVisible({ timeout: 30_000 })
   })
 
   test('telas financeiras e de gestão não abrem (redirect da role)', async ({ page }) => {

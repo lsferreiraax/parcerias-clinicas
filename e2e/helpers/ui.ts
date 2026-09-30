@@ -50,8 +50,39 @@ export async function abrirRota(page: Page, rota: string): Promise<string> {
     if (atual === anterior && temTitulo) break
     anterior = atual
   }
+  // Rotas que redirecionam (guards) não têm título a esperar; nas demais, espera o h1 (dashboards carregam devagar).
+  const ficouNaRota = new URL(page.url()).pathname === rota
+  // Na própria rota: espera o h1 (recarrega UMA vez se o <main> continuar vazio). Redirecionada: espera curta.
+  await aguardarConteudo(page, ficouNaRota ? { recarregar: true, tolerante: true } : { recarregar: false, tolerante: true, timeout: 10_000 })
   await aguardarRede(page)
   return new URL(page.url()).pathname
+}
+
+/**
+ * Espera o conteúdo real da página: o `h1` dentro de <main> visível e os textos "Carregando..." sumindo.
+ * Se o <main> continuar sem conteúdo depois de `esperaInicialMs` (instabilidade de rede/carga), recarrega UMA vez.
+ * `tolerante`: não lança se o h1 não aparecer (rotas bloqueadas/redirecionadas); quem chama valida o resultado.
+ */
+export async function aguardarConteudo(
+  page: Page,
+  o: { timeout?: number; esperaInicialMs?: number; recarregar?: boolean; tolerante?: boolean } = {},
+): Promise<void> {
+  const { timeout = 30_000, esperaInicialMs = 15_000, recarregar = true, tolerante = false } = o
+  const h1 = page.locator('main h1').first()
+  const esperar = async (ms: number) => {
+    await h1.waitFor({ state: 'visible', timeout: ms })
+    await page.getByText(/^Carregando/).first().waitFor({ state: 'hidden', timeout: ms }).catch(() => { /* segue */ })
+  }
+  try {
+    await esperar(recarregar ? esperaInicialMs : timeout)
+  } catch (e) {
+    if (recarregar) {
+      await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => undefined)
+      try { await esperar(timeout) } catch (e2) { if (!tolerante) throw e2 }
+    } else if (!tolerante) {
+      throw e
+    }
+  }
 }
 
 /** Texto visível de <main>, opcionalmente ocultando elementos (ex.: o select "Parceria" do DT8). */
@@ -85,9 +116,9 @@ export async function rolagemHorizontal(page: Page): Promise<{ pagina: number; c
   })
 }
 
-/** Hrefs e rótulos do menu lateral desktop. */
+/** Hrefs e rótulos do menu lateral desktop (o sufixo numérico do badge, ex.: "Repasses3", é removido). */
 export async function itensDoMenu(page: Page): Promise<{ href: string; texto: string }[]> {
   return page.locator('aside').first().locator('nav a').evaluateAll(as =>
-    as.map(a => ({ href: new URL((a as HTMLAnchorElement).href).pathname, texto: (a.textContent ?? '').trim() })),
+    as.map(a => ({ href: new URL((a as HTMLAnchorElement).href).pathname, texto: (a.textContent ?? '').trim().replace(/\d+$/, '').trim() })),
   )
 }

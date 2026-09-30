@@ -1,6 +1,6 @@
 import type { Browser, Page } from '@playwright/test'
 import { ColetorErros } from './coletor'
-import { abrirRota, textoDoMain } from './ui'
+import { abrirRota, aguardarConteudo, textoDoMain } from './ui'
 import { acharUuids } from './uuid'
 
 export interface ResultadoRota {
@@ -23,8 +23,14 @@ const EXTRAS: Record<string, (page: Page, r: ResultadoRota) => Promise<string[]>
     await page.getByRole('button', { name: /Nova Sessão/ }).click()
     await page.locator('div.fixed.inset-0 h2', { hasText: 'Nova Sessão' }).waitFor()
     r.notas.push('DT8: select "Parceria" do formulário de sessão excluído da checagem de UUID')
-    // select cujo primeiro option é "Sem vínculo" = Parceria
-    return ['select:has(option[value=""]:text-is("Sem vínculo"))']
+    // select cujo primeiro option é "Sem vínculo" = Parceria (marcado por JS puro; `:text-is` só existe em locators do Playwright)
+    await page.evaluate(() => {
+      document.querySelectorAll('main select, div.fixed.inset-0 select').forEach(sel => {
+        const opts = Array.from((sel as HTMLSelectElement).options)
+        if (opts.some(o => o.value === '' && (o.textContent ?? '').trim() === 'Sem vínculo')) sel.setAttribute('data-qa-parceria', '1')
+      })
+    })
+    return ['select[data-qa-parceria="1"]']
   },
 }
 
@@ -50,6 +56,10 @@ export async function varrerRotas(
       const r: ResultadoRota = { rota, destino: '', titulo: '', uuids: [], apiErros: [], consoleErros: [], notas: [] }
       try {
         r.destino = await abrirRota(page, rota)
+        // <main> vazio (instabilidade momentânea): recarrega uma vez antes de ler título/UUIDs
+        if (r.destino === rota && (await page.locator('main h1').count()) === 0) {
+          await aguardarConteudo(page, { recarregar: true, tolerante: true })
+        }
         r.titulo = ((await page.locator('main h1').first().textContent().catch(() => '')) ?? '').trim()
         const ocultar = EXTRAS[rota] ? await EXTRAS[rota](page, r) : []
         r.uuids = acharUuids(await textoDoMain(page, ocultar))

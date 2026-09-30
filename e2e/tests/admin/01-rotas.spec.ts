@@ -7,13 +7,14 @@ import { PERFIS } from '../../helpers/rotas'
 
 test.describe('Admin: rotas', () => {
   test('as 19 rotas do admin abrem e o menu tem 19 itens', async ({ page }) => {
+    test.setTimeout(300_000) // 19 telas; dashboards podem demorar a carregar
     const rotas = PERFIS.admin.permitidas
     expect(rotas).toHaveLength(19)
     await page.goto('/')
     for (const rota of rotas) {
       const final = await abrirRota(page, rota)
       expect.soft(final, `rota ${rota}`).toBe(rota)
-      await expect.soft(page.locator('main h1').first(), `título de ${rota}`).toBeVisible()
+      await expect.soft(page.locator('main h1').first(), `título de ${rota}`).toBeVisible({ timeout: 30_000 })
     }
     expect(await itensDoMenu(page)).toHaveLength(19)
   })

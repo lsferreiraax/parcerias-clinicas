@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures'
-import { criarLancamentoPelaTela, filtrarParcelas, ROTULO_ABA_REPASSE } from '../../helpers/financeiro'
+import { criarLancamentoPelaTela, filtrarParcelas, linhaParcela, ROTULO_ABA_REPASSE } from '../../helpers/financeiro'
 import { nomeQA } from '../../helpers/dados'
 import { abrirRota, dataLocal, modalAberto } from '../../helpers/ui'
 
@@ -39,9 +39,15 @@ test.describe('Admin: fluxo financeiro ponta a ponta', () => {
 
   test('3. baixa a parcela 1', async ({ page, apiAdmin }) => {
     const linhas = await filtrarParcelas(page, PACIENTE)
-    const p1 = linhas.filter({ hasText: /\b1\/3\b/ })
-    await p1.getByTitle('Marcar como pago').click()
-    await expect(p1).toContainText('pago')
+    // A tela tem tabela (desktop) e cards (mobile, md:hidden) no DOM; a tabela é a visível em 1366px.
+    // A baixa é direta (sem modal de confirmação): o botão chama a mutation e a linha passa a "pago".
+    const p1 = linhaParcela(linhas, 1)
+    await expect(p1).toHaveCount(1)
+    await expect(p1.getByRole('cell', { name: 'vencida', exact: true })).toBeVisible()
+    const baixa = page.waitForResponse(r => r.url().includes('/rest/v1/parcelas') && ['PATCH', 'POST'].includes(r.request().method()), { timeout: 30_000 })
+    await p1.getByRole('button', { name: 'Marcar como pago' }).click()
+    expect((await baixa).ok(), 'resposta da baixa da parcela').toBe(true)
+    await expect(p1.getByRole('cell', { name: 'pago', exact: true })).toBeVisible({ timeout: 20_000 })
     const r = await apiAdmin.get(`parcelas?select=status&lancamento_id=eq.${lancamentoId}&parcela_num=eq.1`)
     expect(r.body[0].status).toBe('pago')
   })
@@ -71,8 +77,8 @@ test.describe('Admin: fluxo financeiro ponta a ponta', () => {
 
   test('6. renegocia a parcela vencida 2/3', async ({ page, apiAdmin }) => {
     const linhas = await filtrarParcelas(page, PACIENTE)
-    const p2 = linhas.filter({ hasText: /\b2\/3\b/ })
-    await p2.getByTitle('Renegociar').click()
+    const p2 = linhaParcela(linhas, 2)
+    await p2.getByRole('button', { name: 'Renegociar' }).click()
     const form = page.locator('form')
     await form.locator('input[type="date"]').fill(dataLocal(10))
     await form.locator('textarea').fill('QA-renegociação automática')
@@ -101,8 +107,8 @@ test.describe('Admin: fluxo financeiro ponta a ponta', () => {
     const kpi = page.locator('p', { hasText: /^Renegociadas$/ }).locator('xpath=following-sibling::p[1]')
     await expect(kpi).toHaveText(/\d+/)
     const antes = Number(await kpi.innerText())
-    const p3 = linhas.filter({ hasText: /\b3\/3\b/ })
-    await p3.getByTitle('Renegociar').click()
+    const p3 = linhaParcela(linhas, 3)
+    await p3.getByRole('button', { name: 'Renegociar' }).click()
     const form = page.locator('form')
     await form.locator('input[type="date"]').fill(dataLocal(20))
     await form.locator('textarea').fill('QA-renegociação DT3')

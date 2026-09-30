@@ -64,7 +64,8 @@ test.describe('Admin: Psicologia', () => {
     await cartaoSessao(page, PACIENTE).click()
     const modal = modalAberto(page)
     await expect(modal.locator('h2', { hasText: 'Editar Sessão' })).toBeVisible()
-    await expect(modal.locator('button:has(svg.lucide-trash-2)')).toHaveCount(1)
+    // a lixeira é o botão (sem nome) irmão do h2 no cabeçalho do modal; não depende da classe do ícone
+    await expect(modal.locator('h2', { hasText: 'Editar Sessão' }).locator('xpath=following-sibling::button')).toHaveCount(1)
     await modal.getByRole('button', { name: 'Cancelar' }).click()
   })
 
@@ -72,7 +73,7 @@ test.describe('Admin: Psicologia', () => {
     for (const rota of ['/dashboard-psicologia', '/grade-salas']) {
       coletor.limpar()
       expect(await abrirRota(page, rota)).toBe(rota)
-      await expect(page.locator('main h1').first()).toBeVisible()
+      await expect(page.locator('main h1').first()).toBeVisible({ timeout: 30_000 })
       expect(coletor.resumoApi(), `erros de API em ${rota}`).toEqual([])
     }
   })

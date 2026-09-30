@@ -53,11 +53,11 @@ test.describe('Profissional: Agenda', () => {
     const cartao = cartaoSessao(page, paciente)
     await cartao.hover()
     // Atenção: no código atual o botão do cartão existe no DOM para todos e aparece no hover (group-hover).
-    await expect(cartao.locator('button:has(svg.lucide-trash-2)'), 'lixeira no cartão ao passar o mouse').toBeHidden()
+    await expect(cartao.locator('button'), 'lixeira no cartão ao passar o mouse').toBeHidden()
     await cartao.click()
     const modal = modalAberto(page)
     await expect(modal.locator('h2', { hasText: 'Editar Sessão' })).toBeVisible()
-    await expect(modal.locator('button:has(svg.lucide-trash-2)'), 'lixeira no modal de edição').toHaveCount(0)
+    await expect(modal.locator('h2', { hasText: 'Editar Sessão' }).locator('xpath=following-sibling::button'), 'lixeira no modal de edição').toHaveCount(0)
     await modal.getByRole('button', { name: 'Cancelar' }).click()
   })
 
