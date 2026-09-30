@@ -265,12 +265,14 @@ export default function Agenda() {
                           {salas.find(sl => sl.id === s.sala_id)?.nome}
                         </div>
                       )}
-                      <button
-                        onClick={e => { e.stopPropagation(); setConfirmarDeletar(s.id) }}
-                        className="absolute top-0.5 right-0.5 hidden group-hover:flex p-0.5 rounded hover:bg-black/10"
-                      >
-                        <Trash2 size={10} />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setConfirmarDeletar(s.id) }}
+                          className="absolute top-0.5 right-0.5 hidden group-hover:flex p-0.5 rounded hover:bg-black/10"
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                      )}
                     </div>
                   ))}
 
