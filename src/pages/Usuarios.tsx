@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { UserPlus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Card, CardHeader, CardBody, Badge, Button, Modal, Input, Select } from '@/components/ui'
+import { useProfissionais } from '@/hooks/useConfiguracoes'
 import { listarUsuarios, convidarUsuario, atualizarPerfil } from '@/services/usuarios'
 import { listarPerfis, atribuirPerfilUsuario } from '@/services/perfisAcesso'
 import { useAuth } from '@/contexts/AuthContext'
@@ -18,7 +19,7 @@ const PROF_LABEL: Record<TipoProfissional, string> = {
 }
 
 const INIT_NOVO = { email: '', nome: '', role: 'gestor' as Role, tipo_profissional: '', perfil_id: '' }
-const INIT_EDIT = { nome: '', role: 'gestor' as Role, tipo_profissional: '' as TipoProfissional | '', perfil_id: '' }
+const INIT_EDIT = { nome: '', role: 'gestor' as Role, tipo_profissional: '' as TipoProfissional | '', perfil_id: '', profissional_id: '' }
 
 export default function Usuarios() {
   const qc = useQueryClient()
@@ -28,6 +29,7 @@ export default function Usuarios() {
   const [formNovo, setFormNovo]   = useState(INIT_NOVO)
   const [formEdit, setFormEdit]   = useState(INIT_EDIT)
   const [erro, setErro]           = useState('')
+  const { data: profissionais = [] } = useProfissionais()
 
   const { data: usuarios, isLoading } = useQuery({
     queryKey: ['usuarios'],
@@ -73,7 +75,7 @@ export default function Usuarios() {
 
   const abrirEdicao = (u: UserPerfil & { perfil_id?: string }) => {
     setEditando(u)
-    setFormEdit({ nome: u.nome, role: u.role, tipo_profissional: u.tipo_profissional ?? '', perfil_id: u.perfil_id ?? '' })
+    setFormEdit({ nome: u.nome, role: u.role, tipo_profissional: u.tipo_profissional ?? '', perfil_id: u.perfil_id ?? '', profissional_id: (u as any).profissional_id ?? '' })
     setErro('')
   }
 
@@ -97,6 +99,9 @@ export default function Usuarios() {
     if (formEdit.role === 'profissional' && !formEdit.tipo_profissional) {
       setErro('Selecione o tipo do profissional.'); return
     }
+    if (formEdit.role === 'profissional' && !formEdit.profissional_id) {
+      setErro('Vincule o usuário a um profissional; sem vínculo ele não vê nenhuma sessão.'); return
+    }
     setErro('')
     atualizar.mutate({
       id: editando.id,
@@ -104,6 +109,7 @@ export default function Usuarios() {
         nome:              formEdit.nome,
         role:              formEdit.role,
         tipo_profissional: (formEdit.tipo_profissional as TipoProfissional) || null,
+        profissional_id:   formEdit.role === 'profissional' ? (formEdit.profissional_id || null) : null,
       },
       perfilId:       formEdit.perfil_id || undefined,
       perfilAnterior: editando.perfil_id,
@@ -160,6 +166,9 @@ export default function Usuarios() {
                     </td>
                     <td className="px-4 py-3 text-gray-500">
                       {u.tipo_profissional ? PROF_LABEL[u.tipo_profissional] : '—'}
+                      {u.role === 'profissional' && !(u as any).profissional_id && (
+                        <span className="ml-2 text-xs text-red-600" title="Sem profissional vinculado, o usuário não vê sessões">sem vínculo</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={u.ativo ? 'success' : 'danger'}>
@@ -238,19 +247,28 @@ export default function Usuarios() {
           <Input label="Nome" value={formEdit.nome}
             onChange={e => setFormEdit(f => ({ ...f, nome: e.target.value }))} />
           <Select label="Perfil" value={formEdit.role}
-            onChange={e => setFormEdit(f => ({ ...f, role: e.target.value as Role, tipo_profissional: '' }))}>
+            onChange={e => setFormEdit(f => ({ ...f, role: e.target.value as Role, tipo_profissional: '', profissional_id: '' }))}>
             <option value="admin">Admin</option>
             <option value="gestor">Gestor</option>
             <option value="profissional">Profissional</option>
           </Select>
           {formEdit.role === 'profissional' && (
             <Select label="Tipo do Profissional" value={formEdit.tipo_profissional}
-              onChange={e => setFormEdit(f => ({ ...f, tipo_profissional: e.target.value as TipoProfissional }))}>
+              onChange={e => setFormEdit(f => ({ ...f, tipo_profissional: e.target.value as TipoProfissional, profissional_id: '' }))}>
               <option value="">Selecione...</option>
               <option value="camta">Camta</option>
               <option value="medico">Médico</option>
               <option value="psi1">Psi1</option>
               <option value="psi2">Psi2</option>
+            </Select>
+          )}
+          {formEdit.role === 'profissional' && formEdit.tipo_profissional && (
+            <Select label="Profissional vinculado" value={formEdit.profissional_id}
+              onChange={e => setFormEdit(f => ({ ...f, profissional_id: e.target.value }))}>
+              <option value="">Selecione...</option>
+              {profissionais
+                .filter(p => p.ativo && p.tipo === formEdit.tipo_profissional)
+                .map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </Select>
           )}
           <Select label="Perfil de Acesso" value={formEdit.perfil_id}

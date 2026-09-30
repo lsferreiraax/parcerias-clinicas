@@ -11,6 +11,7 @@ export interface UserPerfil {
   email?: string
   role: Role
   tipo_profissional: TipoProfissional | null
+  profissional_id?: string | null
   ativo: boolean
 }
 

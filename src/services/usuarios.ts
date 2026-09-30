@@ -13,6 +13,7 @@ export interface UsuarioComPerfil extends UserPerfil {
   email?: string
   perfil_id?: string
   perfil_nome?: string
+  profissional_id?: string | null
 }
 
 export async function listarUsuarios(): Promise<UsuarioComPerfil[]> {
@@ -40,7 +41,7 @@ export async function convidarUsuario(dados: NovoUsuario): Promise<void> {
 
 export async function atualizarPerfil(
   id: string,
-  dados: Partial<Pick<UserPerfil, 'nome' | 'role' | 'tipo_profissional' | 'ativo'>>,
+  dados: Partial<Pick<UserPerfil, 'nome' | 'role' | 'tipo_profissional' | 'profissional_id' | 'ativo'>>,
 ): Promise<void> {
   const { error } = await supabase
     .from('user_profiles')

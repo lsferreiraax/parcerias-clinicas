@@ -1,3 +1,4 @@
+import { usePerfil } from '@/contexts/PerfilContext'
 import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { useSessoes, useCriarSessao, useAtualizarSessao, useDeletarSessao } from '@/hooks/useSessoes'
@@ -36,6 +37,7 @@ const VAZIA: NovaSessao = {
 }
 
 export default function Agenda() {
+  const { perfil } = usePerfil()
   const [semanaRef, setSemanaRef] = useState(new Date())
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState<Sessao | null>(null)
@@ -84,7 +86,7 @@ export default function Agenda() {
   function abrirNova(data?: string) {
     setEditando(null)
     setErroConflito('')
-    setForm({ ...VAZIA, data_sessao: data ?? hoje })
+    setForm({ ...VAZIA, data_sessao: data ?? hoje, profissional_id: perfil?.profissional_id ?? undefined })
     setDiaPreSelecionado(data ?? '')
     setModalAberto(true)
   }
