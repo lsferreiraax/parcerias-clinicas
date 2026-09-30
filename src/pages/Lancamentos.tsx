@@ -468,7 +468,7 @@ export default function Lancamentos() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge>
+                  <Badge variant={l.parceria_id as ParceriaId}>{getParceriaLabel(l.parceria_id)}</Badge>
                   <span className="text-xs text-gray-500">{fmt.data(l.data_atendimento)}</span>
                   <span className="text-xs text-gray-500">{l.forma_pagamento === 'avista' ? 'À Vista' : `${l.num_parcelas}x`}</span>
                   <MeioPagamentoBadges meios={l.meio_pagamento} />

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FileDown, FileText, AlertTriangle, TrendingUp, ArrowLeftRight, CreditCard } from 'lucide-react'
 import { Card, Button, FiltroData } from '@/components/ui'
 import { useLancamentos } from '@/hooks/useLancamentos'
+import { useParcerias } from '@/hooks/useConfiguracoes'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { usePerfil } from '@/contexts/PerfilContext'
@@ -32,6 +33,7 @@ function useParcelas(status?: string) {
 }
 
 export default function Relatorios() {
+  useParcerias()
   const { perfil } = usePerfil()
   const usuarioNome = perfil?.nome ?? 'Usuário'
 

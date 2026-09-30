@@ -7,6 +7,8 @@ import {
   useRepassesAntigos,
 } from '@/hooks/useRepasses'
 import { fmt } from '@/lib/utils'
+import { nomeParceria } from '@/lib/parcerias'
+import { useParcerias } from '@/hooks/useConfiguracoes'
 import { gerarRelatorioRepasse, exportarRepasseExcel } from '@/services/relatorio'
 import { usePerfil } from '@/contexts/PerfilContext'
 import type { TipoRepasse, StatusRepasse, Repasse } from '@/types'
@@ -64,6 +66,7 @@ function ModalLog({ repasseId, onClose }: { repasseId: string; onClose: () => vo
 
 export default function Repasses() {
   const { perfil } = usePerfil()
+  useParcerias()
   const usuarioNome = perfil?.nome ?? 'Usuário'
 
   const [abaAtiva, setAbaAtiva]   = useState<TipoRepasse>('medico')
@@ -330,7 +333,7 @@ export default function Repasses() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">{r.lancamentos?.data_atendimento ? fmt.data(r.lancamentos.data_atendimento) : '—'}</td>
                     <td className="px-4 py-3 font-medium">{r.lancamentos?.paciente ?? '—'}</td>
-                    <td className="px-4 py-3">{r.lancamentos?.parceria_id ? <Badge variant={r.lancamentos.parceria_id as 'A'|'B'|'C'}>Parceria {r.lancamentos.parceria_id}</Badge> : '—'}</td>
+                    <td className="px-4 py-3">{r.lancamentos?.parceria_id ? <Badge variant={r.lancamentos.parceria_id as 'A'|'B'|'C'}>{nomeParceria(r.lancamentos.parceria_id)}</Badge> : '—'}</td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.lancamentos?.data_pagamento ? fmt.data(r.lancamentos.data_pagamento) : '—'}</td>
                     <td className="px-4 py-3">{fmt.moeda(Number(r.valor_original))}</td>
                     <td className="px-4 py-3 font-semibold">
@@ -372,7 +375,7 @@ export default function Repasses() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
-                  {r.lancamentos?.parceria_id && <Badge variant={r.lancamentos.parceria_id as 'A'|'B'|'C'}>Parceria {r.lancamentos.parceria_id}</Badge>}
+                  {r.lancamentos?.parceria_id && <Badge variant={r.lancamentos.parceria_id as 'A'|'B'|'C'}>{nomeParceria(r.lancamentos.parceria_id)}</Badge>}
                   {r.lancamentos?.data_atendimento && <span>Atend. {fmt.data(r.lancamentos.data_atendimento)}</span>}
                   {r.lancamentos?.data_pagamento && <span>Pago {fmt.data(r.lancamentos.data_pagamento)}</span>}
                 </div>
