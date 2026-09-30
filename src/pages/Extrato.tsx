@@ -8,6 +8,7 @@ import {
 } from 'recharts'
 import { Card, CardHeader, CardBody, Badge, Button, FiltroData, KpiCard } from '@/components/ui'
 import { useExtrato, useExtratoMensal } from '@/hooks/useExtrato'
+import { useParcerias } from '@/hooks/useConfiguracoes'
 import { usePerfil } from '@/contexts/PerfilContext'
 import { fmt } from '@/lib/utils'
 import { gerarComprovante } from '@/services/relatorio'
@@ -23,6 +24,8 @@ const PROFISSIONAIS: { value: TipoProfissional; label: string; color: string }[]
 
 export default function Extrato() {
   const { isProfissional, perfil }      = usePerfil()
+  const { data: parcerias = [] }        = useParcerias()
+  const getParceriaLabel = (id: string) => parcerias.find(p => p.id === id)?.descricao || id
   const [profissional, setProfissional] = useState<TipoProfissional>('camta')
   const [dataInicio, setDataInicio]     = useState('')
   const [dataFim, setDataFim]           = useState('')
@@ -75,7 +78,7 @@ export default function Extrato() {
     const rows = (linhas ?? []).map(l => ({
       Data:         fmt.data(l.data_atendimento),
       Paciente:     l.paciente,
-      Parceria:     `Parceria ${l.parceria_id}`,
+      Parceria:     getParceriaLabel(l.parceria_id),
       Pagamento:    l.forma_pagamento === 'avista' ? 'À Vista' : 'Parcelado',
       'Valor Total': fmt.moeda(l.valor_total),
       [profLabel]:  fmt.moeda(l.valor_profissional),
@@ -258,7 +261,7 @@ export default function Extrato() {
                     <td className="px-4 py-3 whitespace-nowrap">{fmt.data(l.data_atendimento)}</td>
                     <td className="px-4 py-3 font-medium">{l.paciente}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge>
+                      <Badge variant={l.parceria_id as ParceriaId}>{getParceriaLabel(l.parceria_id)}</Badge>
                     </td>
                     <td className="px-4 py-3">{l.forma_pagamento === 'avista' ? 'À Vista' : 'Parcelado'}</td>
                     <td className="px-4 py-3">{fmt.moeda(l.valor_total)}</td>

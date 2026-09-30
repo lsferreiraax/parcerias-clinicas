@@ -197,6 +197,13 @@ export default function Lancamentos() {
   // Reset paginação ao mudar filtros
   useEffect(() => { setPagina(1) }, [filtros, buscaPaciente])
   const [form, setForm]                           = useState(INIT)
+
+  // Inicializa parceria_id com a primeira parceria disponível
+  useEffect(() => {
+    if (parcerias.length > 0 && form.parceria_id === 'A') {
+      setForm(f => ({ ...f, parceria_id: parcerias[0].id as ParceriaId }))
+    }
+  }, [parcerias])
   const [selecionados, setSelecionados]           = useState<Set<string>>(new Set())
   const [motivoExclusao, setMotivoExclusao]       = useState('')
   const [motivoCancelamento, setMotivoCancelamento] = useState('')
@@ -278,7 +285,7 @@ export default function Lancamentos() {
   }
 
   const handleSubmit = async () => {
-    if (!form.paciente || !form.valor_total) return
+    if (!form.paciente || !form.valor_total || !form.parceria_id || form.parceria_id === 'A') return
     await criar.mutateAsync({
       ...form,
       nome_responsavel: form.nome_responsavel || undefined,
@@ -413,7 +420,7 @@ export default function Lancamentos() {
                     )}
                     <td className="px-4 py-3 whitespace-nowrap">{fmt.data(l.data_atendimento)}</td>
                     <td className="px-4 py-3 font-medium"><div className="flex items-center gap-1.5">{l.paciente}{l.nome_responsavel && <TooltipResponsavel nome={l.nome_responsavel} />}</div></td>
-                    <td className="px-4 py-3"><Badge variant={l.parceria_id as ParceriaId}>Parceria {l.parceria_id}</Badge></td>
+                    <td className="px-4 py-3"><Badge variant={l.parceria_id as ParceriaId}>{getParceriaLabel(l.parceria_id)}</Badge></td>
                     <td className="px-4 py-3">{l.forma_pagamento === 'avista' ? 'À Vista' : `Parcelado ${l.num_parcelas}x`}</td>
                     <td className="px-4 py-3"><MeioPagamentoBadges meios={l.meio_pagamento} /></td>
                     <td className="px-4 py-3 font-semibold">{fmt.moeda(l.valor_total)}</td>
