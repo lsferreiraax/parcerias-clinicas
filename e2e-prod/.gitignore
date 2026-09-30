@@ -1,0 +1,9 @@
+node_modules
+# Sessões de PRODUÇÃO (tokens reais): nunca versionar
+.auth-prod
+.auth
+test-results
+playwright-report
+blob-report
+.env
+.env.*

@@ -1,0 +1,18 @@
+{
+  "name": "parcerias-clinicas-e2e-prod",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smoke pos-deploy de PRODUCAO (Playwright). Somente leitura. Roda SOMENTE contra producao; aborta em staging.",
+  "scripts": {
+    "smoke:publico": "playwright test --project=prod-publico",
+    "smoke:admin": "playwright test --project=prod-admin",
+    "smoke:financeiro": "playwright test --project=prod-financeiro",
+    "list": "playwright test --list",
+    "tipos": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
