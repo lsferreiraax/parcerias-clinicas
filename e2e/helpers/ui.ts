@@ -104,14 +104,28 @@ export async function uuidsNoMain(page: Page, ocultarSeletores: string[] = []): 
   return acharUuids(await textoDoMain(page, ocultarSeletores))
 }
 
-/** Rolagem horizontal: da página e do contêiner de conteúdo (main > div.overflow-auto). */
-export async function rolagemHorizontal(page: Page): Promise<{ pagina: number; conteudo: number }> {
+/** Rolagem horizontal: da página e do contêiner de conteúdo (main > div.overflow-auto), com os elementos que excedem a largura da tela. */
+export async function rolagemHorizontal(page: Page): Promise<{ pagina: number; conteudo: number; ofensores: string[] }> {
   return page.evaluate(() => {
     const de = document.documentElement
     const cont = document.querySelector('main .overflow-auto') as HTMLElement | null
+    const largura = de.clientWidth
+    const ofensores: { txt: string; px: number }[] = []
+    document.querySelectorAll('main *').forEach(el => {
+      const r = (el as HTMLElement).getBoundingClientRect()
+      if (r.width === 0 || r.height === 0) return
+      const px = Math.round(r.right - largura)
+      if (px > 1) {
+        const cls = ((el as HTMLElement).className?.toString() ?? '').split(/\s+/).filter(Boolean).slice(0, 3).join('.')
+        const texto = ((el as HTMLElement).innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 30)
+        ofensores.push({ txt: `${el.tagName.toLowerCase()}${cls ? '.' + cls : ''} "${texto}" +${px}px`, px })
+      }
+    })
+    ofensores.sort((a, b) => b.px - a.px)
     return {
       pagina: Math.max(0, de.scrollWidth - de.clientWidth),
       conteudo: cont ? Math.max(0, cont.scrollWidth - cont.clientWidth) : 0,
+      ofensores: ofensores.slice(0, 5).map(o => o.txt),
     }
   })
 }

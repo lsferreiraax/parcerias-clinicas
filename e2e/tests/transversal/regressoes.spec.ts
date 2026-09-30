@@ -89,7 +89,7 @@ test.describe('Regressões transversais', () => {
       expect.soft(destino).toBe(rota)
       const s = await rolagemHorizontal(page)
       expect.soft(s.pagina, `rolagem horizontal da página em ${rota}`).toBeLessThanOrEqual(1)
-      expect.soft(s.conteudo, `rolagem horizontal do conteúdo em ${rota}`).toBeLessThanOrEqual(1)
+      expect.soft(s.conteudo, `rolagem horizontal do conteúdo em ${rota}; elementos que passam da tela: ${s.ofensores.join(' | ')}`).toBeLessThanOrEqual(1)
     }
   })
 })

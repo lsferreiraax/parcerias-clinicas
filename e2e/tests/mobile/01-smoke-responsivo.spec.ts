@@ -23,7 +23,7 @@ test.describe('Mobile 375px (admin)', () => {
     await expect(page.locator('table').first()).toBeHidden()
     const s = await rolagemHorizontal(page)
     expect(s.pagina).toBeLessThanOrEqual(1)
-    expect(s.conteudo).toBeLessThanOrEqual(1)
+    expect(s.conteudo, `elementos que passam da tela: ${s.ofensores.join(' | ')}`).toBeLessThanOrEqual(1)
   })
 
   test('Agenda cabe na tela de 375px', async ({ page }) => {
@@ -31,6 +31,6 @@ test.describe('Mobile 375px (admin)', () => {
     await abrirRota(page, '/agenda')
     const s = await rolagemHorizontal(page)
     expect(s.pagina).toBeLessThanOrEqual(1)
-    expect(s.conteudo).toBeLessThanOrEqual(1)
+    expect(s.conteudo, `elementos que passam da tela: ${s.ofensores.join(' | ')}`).toBeLessThanOrEqual(1)
   })
 })
