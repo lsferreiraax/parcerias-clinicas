@@ -1,5 +1,6 @@
 import { PREFIXO_QA } from '../config'
 import type { ApiRest } from './api'
+import { desativarUsuariosQA } from './usuarios'
 
 /**
  * Apaga dados sintéticos criados pela suíte (TUDO filtrado por prefixo "QA-"; nunca um DELETE sem filtro).
@@ -53,5 +54,7 @@ export async function limparDadosQA(admin: ApiRest): Promise<string[]> {
   const resP = await comRetry(() => admin.get(`pacientes?select=id&nome=${padrao}`))
   if (res.status === 200 && resP.status === 200) log.push(`resíduos: lancamentos=${linhas(res)} pacientes=${linhas(resP)}`)
   else log.push(`resíduos: NÃO VERIFICADOS (HTTP ${res.status}/${resP.status}); confira no staging o prefixo "${PREFIXO_QA}"`)
+  // DT16: usuários de teste (qa-dt16-*) são desativados (ativo=false); apagar de auth.users exige service role.
+  log.push(await desativarUsuariosQA(admin))
   return log
 }

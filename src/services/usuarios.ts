@@ -71,11 +71,18 @@ export async function redefinirSenhaUsuario(id: string, novaSenha: string): Prom
   await invocar('criar-usuario', { acao: 'redefinir_senha', id, nova_senha: novaSenha })
 }
 
-/** Troca de senha do próprio usuário (troca obrigatória); limpa a marca no servidor. */
+/**
+ * Troca de senha do próprio usuário (troca obrigatória); limpa a marca no servidor.
+ * O Auth encerra as sessões do usuário ao trocar a senha por API admin (inclusive a atual), então o app entra de
+ * novo com a senha nova, o que gera uma sessão limpa, sem a marca de troca pendente.
+ */
 export async function trocarMinhaSenha(novaSenha: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  const email = user?.email
   await invocar('trocar-senha', { nova_senha: novaSenha })
-  const { error } = await supabase.auth.refreshSession()
-  if (error) throw new Error('Senha alterada, mas não foi possível renovar a sessão. Saia e entre novamente com a nova senha.')
+  if (!email) throw new Error('Senha alterada. Entre novamente com a nova senha.')
+  const { error } = await supabase.auth.signInWithPassword({ email, password: novaSenha })
+  if (error) throw new Error('Senha alterada, mas não foi possível entrar automaticamente. Entre novamente com a nova senha.')
 }
 
 /** Gera uma senha forte (letras, números e símbolos) para o admin copiar. */
