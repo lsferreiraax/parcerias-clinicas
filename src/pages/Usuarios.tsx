@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { UserPlus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react'
+import { UserPlus, Pencil, ToggleLeft, ToggleRight, Mail, KeyRound } from 'lucide-react'
 import { Card, CardHeader, CardBody, Badge, Button, Modal, Input, Select } from '@/components/ui'
 import { useProfissionais } from '@/hooks/useConfiguracoes'
-import { listarUsuarios, convidarUsuario, atualizarPerfil } from '@/services/usuarios'
+import {
+  listarUsuarios, criarUsuario, atualizarPerfil, reenviarConvite, redefinirSenhaUsuario, gerarSenha, senhaValida,
+} from '@/services/usuarios'
 import { listarPerfis, atribuirPerfilUsuario } from '@/services/perfisAcesso'
 import { useAuth } from '@/contexts/AuthContext'
 import type { UserPerfil, Role, TipoProfissional } from '@/contexts/PerfilContext'
@@ -18,7 +20,13 @@ const PROF_LABEL: Record<TipoProfissional, string> = {
   camta: 'Camta', medico: 'Médico', psi1: 'Psi1', psi2: 'Psi2',
 }
 
-const INIT_NOVO = { email: '', nome: '', role: 'gestor' as Role, tipo_profissional: '', perfil_id: '' }
+const INIT_NOVO = {
+  email: '', nome: '', role: 'gestor' as Role, tipo_profissional: '', profissional_id: '', perfil_id: '',
+  modo: 'convidar' as 'convidar' | 'cadastrar', senha: '',
+}
+
+/** Nome do perfil de acesso sugerido para cada papel (mesmo mapeamento da migration 036) */
+const PERFIL_DO_ROLE: Record<Role, string> = { admin: 'admin', gestor: 'financeiro', profissional: 'profissional' }
 const INIT_EDIT = { nome: '', role: 'gestor' as Role, tipo_profissional: '' as TipoProfissional | '', perfil_id: '', profissional_id: '' }
 
 export default function Usuarios() {
@@ -29,6 +37,9 @@ export default function Usuarios() {
   const [formNovo, setFormNovo]   = useState(INIT_NOVO)
   const [formEdit, setFormEdit]   = useState(INIT_EDIT)
   const [erro, setErro]           = useState('')
+  const [redefinindo, setRedefinindo] = useState<{ id: string; nome: string } | null>(null)
+  const [novaSenha, setNovaSenha]      = useState('')
+  const [aviso, setAviso]              = useState<{ texto: string; erro?: boolean } | null>(null)
   const { data: profissionais = [] } = useProfissionais()
 
   const { data: usuarios, isLoading } = useQuery({
@@ -41,13 +52,33 @@ export default function Usuarios() {
     queryFn: listarPerfis,
   })
 
-  const convidar = useMutation({
-    mutationFn: convidarUsuario,
-    onSuccess: () => {
+  const perfilPadrao = (role: Role) => perfisAcesso.find(p => p.nome === PERFIL_DO_ROLE[role])?.id ?? ''
+
+  const criar = useMutation({
+    mutationFn: criarUsuario,
+    onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['usuarios'] })
       setModalNovo(false)
-      setFormNovo(INIT_NOVO)
+      setFormNovo({ ...INIT_NOVO, perfil_id: perfilPadrao(INIT_NOVO.role) })
       setErro('')
+      setAviso({ texto: v.acao === 'cadastrar'
+        ? 'Usuário cadastrado. Informe a senha inicial a ele; a troca é obrigatória no primeiro acesso.'
+        : 'Convite enviado por e-mail.' })
+    },
+    onError: (e: Error) => setErro(e.message),
+  })
+
+  const reenviar = useMutation({
+    mutationFn: reenviarConvite,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['usuarios'] }); setAviso({ texto: 'Convite reenviado.' }) },
+    onError: (e: Error) => setAviso({ texto: e.message, erro: true }),
+  })
+
+  const redefinir = useMutation({
+    mutationFn: ({ id, senha }: { id: string; senha: string }) => redefinirSenhaUsuario(id, senha),
+    onSuccess: () => {
+      setRedefinindo(null); setNovaSenha(''); setErro('')
+      setAviso({ texto: 'Senha redefinida. O usuário deverá trocá-la no próximo acesso.' })
     },
     onError: (e: Error) => setErro(e.message),
   })
@@ -79,19 +110,39 @@ export default function Usuarios() {
     setErro('')
   }
 
-  const handleConvidar = () => {
+  const fecharNovo = () => { setModalNovo(false); setFormNovo(f => ({ ...f, senha: '' })); setErro('') }
+  const fecharRedefinir = () => { setRedefinindo(null); setNovaSenha(''); setErro('') }
+
+  const handleCriar = () => {
     if (!formNovo.email || !formNovo.nome) { setErro('E-mail e nome são obrigatórios.'); return }
     if (formNovo.role === 'profissional' && !formNovo.tipo_profissional) {
       setErro('Selecione o tipo do profissional.'); return
     }
+    if (formNovo.role === 'profissional' && !formNovo.profissional_id) {
+      setErro('Vincule o usuário a um profissional; sem vínculo ele não vê nenhuma sessão.'); return
+    }
+    if (!formNovo.perfil_id) { setErro('Selecione o perfil de acesso.'); return }
+    if (formNovo.modo === 'cadastrar' && !senhaValida(formNovo.senha)) {
+      setErro('A senha deve ter ao menos 10 caracteres, com letras e números.'); return
+    }
     setErro('')
-    convidar.mutate({
+    criar.mutate({
+      acao:              formNovo.modo,
       email:             formNovo.email,
       nome:              formNovo.nome,
       role:              formNovo.role,
       tipo_profissional: (formNovo.tipo_profissional as TipoProfissional) || undefined,
-      perfil_id:         formNovo.perfil_id || undefined,
+      profissional_id:   formNovo.profissional_id || undefined,
+      perfil_id:         formNovo.perfil_id,
+      senha:             formNovo.modo === 'cadastrar' ? formNovo.senha : undefined,
     })
+  }
+
+  const handleRedefinir = () => {
+    if (!redefinindo) return
+    if (!senhaValida(novaSenha)) { setErro('A senha deve ter ao menos 10 caracteres, com letras e números.'); return }
+    setErro('')
+    redefinir.mutate({ id: redefinindo.id, senha: novaSenha })
   }
 
   const handleAtualizar = () => {
@@ -127,10 +178,19 @@ export default function Usuarios() {
           <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Usuários</h1>
           <p className="text-gray-500 text-sm mt-1">Gerencie os acessos ao sistema</p>
         </div>
-        <Button onClick={() => { setModalNovo(true); setErro('') }}>
-          <UserPlus size={16} /> Convidar Usuário
+        <Button onClick={() => {
+          setModalNovo(true); setErro(''); setAviso(null)
+          setFormNovo(f => ({ ...f, perfil_id: f.perfil_id || perfilPadrao(f.role) }))
+        }}>
+          <UserPlus size={16} /> Novo Usuário
         </Button>
       </div>
+
+      {aviso && (
+        <p role="status" className={`text-sm rounded-lg px-3 py-2 ${aviso.erro
+          ? 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300'
+          : 'text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-300'}`}>{aviso.texto}</p>
+      )}
 
       <Card>
         <CardHeader>
@@ -174,6 +234,7 @@ export default function Usuarios() {
                       <Badge variant={u.ativo ? 'success' : 'danger'}>
                         {u.ativo ? 'Ativo' : 'Inativo'}
                       </Badge>
+                      {u.convite_pendente && <span className="ml-2 text-xs text-amber-600">ainda não acessou</span>}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
@@ -182,6 +243,21 @@ export default function Usuarios() {
                           className="p-1.5 text-gray-500 hover:bg-gray-100 rounded" title="Editar">
                           <Pencil size={15} />
                         </button>
+                        {u.convite_pendente && (
+                          <button
+                            onClick={() => { setAviso(null); reenviar.mutate(u.id) }}
+                            disabled={reenviar.isPending}
+                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded disabled:opacity-40" title="Reenviar e-mail de convite" aria-label="Reenviar convite">
+                            <Mail size={15} />
+                          </button>
+                        )}
+                        {u.id !== user?.id && (
+                          <button
+                            onClick={() => { setRedefinindo({ id: u.id, nome: u.nome }); setNovaSenha(''); setErro(''); setAviso(null) }}
+                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded" title="Redefinir senha" aria-label="Redefinir senha">
+                            <KeyRound size={15} />
+                          </button>
+                        )}
                         <button
                           onClick={() => toggleAtivo(u)}
                           className={`p-1.5 rounded ${u.ativo ? 'text-red-400 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
@@ -198,22 +274,35 @@ export default function Usuarios() {
         </CardBody>
       </Card>
 
-      {/* Modal — Convidar */}
-      <Modal open={modalNovo} onClose={() => setModalNovo(false)} title="Convidar Usuário">
+      {/* Modal — Novo usuário (convite por e-mail ou cadastro manual) */}
+      <Modal open={modalNovo} onClose={fecharNovo} title="Novo Usuário">
         <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg" role="radiogroup" aria-label="Forma de cadastro">
+            {([['convidar', 'Convidar por e-mail'], ['cadastrar', 'Cadastrar com senha']] as const).map(([m, rotulo]) => (
+              <button key={m} type="button" role="radio" aria-checked={formNovo.modo === m}
+                onClick={() => { setFormNovo(f => ({ ...f, modo: m })); setErro('') }}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  formNovo.modo === m ? 'bg-white dark:bg-gray-800 shadow text-[#1F3864] dark:text-blue-300' : 'text-gray-500'}`}>
+                {rotulo}
+              </button>
+            ))}
+          </div>
           <Input label="E-mail" type="email" placeholder="usuario@email.com"
             value={formNovo.email} onChange={e => setFormNovo(f => ({ ...f, email: e.target.value }))} />
           <Input label="Nome" placeholder="Nome completo"
             value={formNovo.nome} onChange={e => setFormNovo(f => ({ ...f, nome: e.target.value }))} />
           <Select label="Perfil" value={formNovo.role}
-            onChange={e => setFormNovo(f => ({ ...f, role: e.target.value as Role, tipo_profissional: '' }))}>
+            onChange={e => {
+              const role = e.target.value as Role
+              setFormNovo(f => ({ ...f, role, tipo_profissional: '', profissional_id: '', perfil_id: perfilPadrao(role) }))
+            }}>
             <option value="admin">Admin</option>
             <option value="gestor">Gestor</option>
             <option value="profissional">Profissional</option>
           </Select>
           {formNovo.role === 'profissional' && (
             <Select label="Tipo do Profissional" value={formNovo.tipo_profissional}
-              onChange={e => setFormNovo(f => ({ ...f, tipo_profissional: e.target.value }))}>
+              onChange={e => setFormNovo(f => ({ ...f, tipo_profissional: e.target.value, profissional_id: '' }))}>
               <option value="">Selecione...</option>
               <option value="camta">Camta</option>
               <option value="medico">Médico</option>
@@ -221,16 +310,62 @@ export default function Usuarios() {
               <option value="psi2">Psi2</option>
             </Select>
           )}
+          {formNovo.role === 'profissional' && formNovo.tipo_profissional && (
+            <Select label="Profissional vinculado" value={formNovo.profissional_id}
+              onChange={e => setFormNovo(f => ({ ...f, profissional_id: e.target.value }))}>
+              <option value="">Selecione...</option>
+              {profissionais
+                .filter(p => p.ativo && p.tipo === formNovo.tipo_profissional)
+                .map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </Select>
+          )}
           <Select label="Perfil de Acesso" value={formNovo.perfil_id}
             onChange={e => setFormNovo(f => ({ ...f, perfil_id: e.target.value }))}>
             <option value="">Selecione um perfil...</option>
             {perfisAcesso.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
           </Select>
+          {formNovo.modo === 'cadastrar' && (
+            <div className="space-y-1">
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Input label="Senha inicial" type="text" autoComplete="off" placeholder="Mín. 10 caracteres, letras e números"
+                    value={formNovo.senha} onChange={e => setFormNovo(f => ({ ...f, senha: e.target.value }))} />
+                </div>
+                <Button type="button" variant="secondary" onClick={() => setFormNovo(f => ({ ...f, senha: gerarSenha() }))}>Gerar</Button>
+              </div>
+              <p className="text-xs text-gray-400">Informe esta senha ao usuário por um canal seguro. Ele será obrigado a trocá-la no primeiro acesso.</p>
+            </div>
+          )}
           {erro && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{erro}</p>}
-          <p className="text-xs text-gray-400">O usuário receberá um e-mail para definir a senha.</p>
+          {formNovo.modo === 'convidar' && (
+            <p className="text-xs text-gray-400">O usuário receberá um e-mail para definir a senha.</p>
+          )}
           <div className="flex gap-3 pt-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setModalNovo(false)}>Cancelar</Button>
-            <Button className="flex-1" loading={convidar.isPending} onClick={handleConvidar}>Enviar Convite</Button>
+            <Button variant="secondary" className="flex-1" onClick={fecharNovo}>Cancelar</Button>
+            <Button className="flex-1" loading={criar.isPending} onClick={handleCriar}>
+              {formNovo.modo === 'convidar' ? 'Enviar Convite' : 'Cadastrar Usuário'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal — Redefinir senha (admin) */}
+      <Modal open={!!redefinindo} onClose={fecharRedefinir} title="Redefinir senha">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Defina uma senha temporária para <strong>{redefinindo?.nome}</strong>. No próximo acesso ele será obrigado a trocá-la.
+          </p>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Input label="Senha temporária" type="text" autoComplete="off" placeholder="Mín. 10 caracteres, letras e números"
+                value={novaSenha} onChange={e => setNovaSenha(e.target.value)} />
+            </div>
+            <Button type="button" variant="secondary" onClick={() => setNovaSenha(gerarSenha())}>Gerar</Button>
+          </div>
+          {erro && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{erro}</p>}
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={fecharRedefinir}>Cancelar</Button>
+            <Button className="flex-1" loading={redefinir.isPending} onClick={handleRedefinir}>Redefinir senha</Button>
           </div>
         </div>
       </Modal>

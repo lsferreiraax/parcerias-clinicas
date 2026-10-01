@@ -11,6 +11,13 @@ export function campo(escopo: Page | Locator, rotulo: string): Locator {
     .first()
 }
 
+/** Como `campo`, mas casa o rótulo INTEIRO (ex.: "Perfil" não casa com "Perfil de Acesso"). */
+export function campoExato(escopo: Page | Locator, rotulo: string): Locator {
+  return escopo
+    .locator(`xpath=.//label[normalize-space(.)="${rotulo}"]/following-sibling::*[self::input or self::select or self::textarea][1]`)
+    .first()
+}
+
 /** Último modal/diálogo aberto (Modal do app e modais da Agenda/Pacientes usam `fixed inset-0`). */
 export function modalAberto(page: Page): Locator {
   return page.locator('div.fixed.inset-0').last()

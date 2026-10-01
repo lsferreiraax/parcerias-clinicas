@@ -6,6 +6,8 @@ interface AuthContextValue {
   session: Session | null
   user: User | null
   loading: boolean
+  /** Troca obrigatória de senha pendente (convite, cadastro manual ou senha temporária); marca só o servidor grava (app_metadata) */
+  mustChangePassword: boolean
   signOut: () => Promise<void>
 }
 
@@ -33,7 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, signOut }}>
+    <AuthContext.Provider value={{
+      session, user: session?.user ?? null, loading, signOut,
+      mustChangePassword: session?.user?.app_metadata?.must_change_password === true,
+    }}>
       {children}
     </AuthContext.Provider>
   )
