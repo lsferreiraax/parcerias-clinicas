@@ -403,7 +403,7 @@ export default function Parcelas() {
                   {p.psi2_valor   > 0 && <div><span className="text-gray-400">Psi2</span><p className="font-medium text-orange-700">{fmt.moeda(p.psi2_valor)}</p></div>}
                 </div>
 
-                <div className="flex gap-2 pt-1">
+                <div className="flex gap-2 pt-1 flex-wrap">
                   {p.status === 'pendente' && podeGerenciar && (
                     <button onClick={() => marcarPaga.mutate(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg">
                       <CheckCircle size={13} /> Baixar

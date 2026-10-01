@@ -4,6 +4,8 @@ import { FileDown, FileText } from 'lucide-react'
 import { Card, CardHeader, CardBody, Badge, Button, FiltroData } from '@/components/ui'
 import { useResumoParceria, useResumoProfissional } from '@/hooks/useResumo'
 import { usePerfil } from '@/contexts/PerfilContext'
+import { useParcerias } from '@/hooks/useConfiguracoes'
+import { nomeParceria } from '@/lib/parcerias'
 import { fmt } from '@/lib/utils'
 import { exportarResumoExcel } from '@/lib/exportarExcel'
 import { gerarRelatorioResumo } from '@/services/relatorio'
@@ -13,6 +15,7 @@ const PROF_LABELS: Record<string, string>  = { camta: 'Camta', medico: 'Médico'
 const PROF_COLORS: Record<string, string>  = { camta: 'text-blue-700', medico: 'text-green-700', psi1: 'text-yellow-700', psi2: 'text-orange-700' }
 
 export default function Resumo() {
+  useParcerias()
   const { perfil } = usePerfil()
   const usuarioNome = perfil?.nome ?? 'Usuário'
 
@@ -46,7 +49,7 @@ export default function Resumo() {
   }
 
   const dadosBarras  = (parceria ?? []).map(r => ({
-    name:   `Parceria ${r.parceria}`,
+    name:   nomeParceria(r.parceria),
     Camta:  Number(r.camta_total),
     Médico: Number(r.medico_total),
     Psi1:   Number(r.psi1_total),
@@ -93,7 +96,7 @@ export default function Resumo() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Badge variant={r.parceria as ParceriaId}>Parceria {r.parceria}</Badge>
+                <Badge variant={r.parceria as ParceriaId}>{nomeParceria(r.parceria)}</Badge>
                 <span className="text-sm text-gray-500">{r.descricao}</span>
               </div>
               <span className="text-sm text-gray-500">{r.total_atendimentos} atendimento(s)</span>

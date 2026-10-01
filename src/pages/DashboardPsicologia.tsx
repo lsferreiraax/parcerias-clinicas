@@ -19,7 +19,7 @@ function KpiCard({ label, value, sub, icon: Icon, cor }: {
       </div>
       <div className="min-w-0">
         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 font-variant-numeric tabular-nums">{value}</p>
+        <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100 font-variant-numeric tabular-nums break-words">{value}</p>
         {sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -222,7 +222,7 @@ export default function DashboardPsicologia() {
                   </div>
                 )
               })}
-              <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">{modalidadeTotal} sessão{modalidadeTotal !== 1 ? 'ões' : ''} no período</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">{modalidadeTotal} {modalidadeTotal === 1 ? 'sessão' : 'sessões'} no período</p>
             </div>
           )}
         </div>

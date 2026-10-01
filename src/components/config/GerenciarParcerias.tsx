@@ -1,3 +1,4 @@
+import { nomeParceria } from '@/lib/parcerias'
 import { useState } from 'react'
 import { Pencil, Plus, Check, X, AlertTriangle, History } from 'lucide-react'
 import { useParcerias, useSalvarParceria, useCriarParceria, useLogParceria } from '@/hooks/useConfiguracoes'
@@ -47,7 +48,7 @@ function ModalHistorico({ parceriaId, onClose }: { parceriaId: string; onClose: 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-[#1F3864] dark:text-blue-300">
-            Histórico — Parceria {parceriaId}
+            Histórico — {nomeParceria(parceriaId)}
           </h2>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500">
             <X size={18} />

@@ -330,12 +330,12 @@ export default function Lancamentos() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#1F3864] dark:text-blue-300">Lançamentos</h1>
           <p className="text-gray-500 text-sm mt-1">Registro de atendimentos e rateio automático</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {podeEditar && selecionados.size > 0 && (
             <Button onClick={abrirModalExclusao} className="bg-red-600 hover:bg-red-700">
               <Trash2 size={16} />

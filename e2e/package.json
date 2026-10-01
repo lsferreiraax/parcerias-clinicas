@@ -1,0 +1,23 @@
+{
+  "name": "parcerias-clinicas-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Suite de testes automatizados (Playwright) do parcerias-clinicas. Roda SOMENTE contra o staging.",
+  "scripts": {
+    "test": "playwright test",
+    "test:publico": "playwright test --project=publico",
+    "test:admin": "playwright test --project=admin",
+    "test:financeiro": "playwright test --project=financeiro",
+    "test:profissional": "playwright test --project=profissional",
+    "test:recepcionista": "playwright test --project=recepcionista",
+    "test:mobile": "playwright test --project=mobile",
+    "list": "playwright test --list",
+    "tipos": "tsc --noEmit",
+    "relatorio": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

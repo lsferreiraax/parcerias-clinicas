@@ -177,7 +177,7 @@ export function KpiCard({ label, value, sub, color }: { label: string; value: st
     <Card className={cn('border-l-4', color ?? 'border-l-[#2E75B6]')}>
       <CardBody>
         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">{value}</p>
+        <p className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1 break-words">{value}</p>
         {sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sub}</p>}
       </CardBody>
     </Card>
