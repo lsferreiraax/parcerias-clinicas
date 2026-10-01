@@ -48,8 +48,9 @@ export function PerfilProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (authLoading) return   // aguarda AuthContext terminar
+    if (user) setLoading(true)  // novo login: o guard espera o perfil antes de decidir (inativo, sem perfil)
     carregar()
-  }, [user, authLoading])
+  }, [user?.id, authLoading])  // por id: o refresh de token cria um novo objeto user e não deve recarregar o perfil
 
   const can = (roles: Role[]) => !!perfil && roles.includes(perfil.role)
 
