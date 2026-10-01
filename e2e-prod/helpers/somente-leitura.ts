@@ -13,7 +13,7 @@ import type { BrowserContext } from '@playwright/test'
 import { SUPABASE_HOST } from '../config'
 
 export const AUTH_PERMITIDOS = ['/auth/v1/token', '/auth/v1/logout']
-export const RPCS_LEITURA = ['listar_perfis_com_email', 'acl_ver', 'acl_editar', 'meu_profissional_id', 'sala_disponivel']
+export const RPCS_LEITURA = ['listar_perfis_com_email', 'acl_ver', 'acl_editar', 'meu_profissional_id', 'sala_disponivel', 'extrato_profissional', 'extrato_mensal']
 
 const METODOS_LEITURA = new Set(['GET', 'HEAD', 'OPTIONS'])
 

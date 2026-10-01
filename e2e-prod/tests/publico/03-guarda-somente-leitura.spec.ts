@@ -11,7 +11,7 @@ test.describe('Guarda de somente leitura', () => {
     const p = (m: string, path: string) => escritaPermitida(m, `${SUPABASE_URL}${path}`)
     expect(p('POST', '/auth/v1/token?grant_type=password')).toBe(true)
     expect(p('POST', '/auth/v1/logout')).toBe(true)
-    for (const f of ['listar_perfis_com_email', 'acl_ver', 'acl_editar', 'meu_profissional_id', 'sala_disponivel']) {
+    for (const f of ['listar_perfis_com_email', 'acl_ver', 'acl_editar', 'meu_profissional_id', 'sala_disponivel', 'extrato_profissional', 'extrato_mensal']) {
       expect(p('POST', `/rest/v1/rpc/${f}`), `rpc ${f}`).toBe(true)
     }
     expect(p('GET', '/rest/v1/lancamentos')).toBe(true)
