@@ -24,42 +24,24 @@ export async function getExtrato(
   profissional: TipoProfissional,
   filtro?: { dataInicio?: string; dataFim?: string },
 ): Promise<LinhaExtrato[]> {
-  let q = supabase
-    .from('lancamentos')
-    .select(`id, data_atendimento, paciente, parceria_id, forma_pagamento, valor_total,
-             camta_valor, medico_valor, psi1_valor, psi2_valor, status`)
-    .order('data_atendimento', { ascending: false })
-
-  if (filtro?.dataInicio) q = q.gte('data_atendimento', filtro.dataInicio)
-  if (filtro?.dataFim)    q = q.lte('data_atendimento', filtro.dataFim)
-
-  const { data, error } = await q
+  // Função SECURITY DEFINER (migration 038): quem não tem acesso financeiro só recebe o próprio tipo.
+  const { data, error } = await supabase.rpc('extrato_profissional', {
+    p_tipo:   profissional,
+    p_inicio: filtro?.dataInicio ?? null,
+    p_fim:    filtro?.dataFim ?? null,
+  })
   if (error) throw error
 
-  type Row = typeof data extends (infer R)[] | null ? R : never
-
-  const valorProfissional = (l: Row) => {
-    const map: Record<TipoProfissional, number> = {
-      camta:  Number(l.camta_valor),
-      medico: Number(l.medico_valor),
-      psi1:   Number(l.psi1_valor),
-      psi2:   Number(l.psi2_valor),
-    }
-    return map[profissional]
-  }
-
-  return (data ?? [])
-    .filter(l => valorProfissional(l) > 0)
-    .map(l => ({
-      id:                 l.id,
-      data_atendimento:   l.data_atendimento,
-      paciente:           l.paciente,
-      parceria_id:        l.parceria_id,
-      forma_pagamento:    l.forma_pagamento,
-      valor_total:        Number(l.valor_total),
-      valor_profissional: valorProfissional(l),
-      status:             l.status,
-    }))
+  return ((data ?? []) as Record<string, unknown>[]).map(l => ({
+    id:                 l.id as string,
+    data_atendimento:   l.data_atendimento as string,
+    paciente:           l.paciente as string,
+    parceria_id:        l.parceria_id as string,
+    forma_pagamento:    l.forma_pagamento as string,
+    valor_total:        Number(l.valor_total),
+    valor_profissional: Number(l.valor_profissional),
+    status:             l.status as string,
+  }))
 }
 
 export async function getExtratoMensal(
@@ -70,25 +52,16 @@ export async function getExtratoMensal(
   dozeAtras.setDate(1)
   const dataInicio = dozeAtras.toISOString().slice(0, 10)
 
-  const { data, error } = await supabase
-    .from('lancamentos')
-    .select('data_atendimento, camta_valor, medico_valor, psi1_valor, psi2_valor')
-    .gte('data_atendimento', dataInicio)
-    .neq('status', 'cancelado')
-    .order('data_atendimento', { ascending: true })
-
+  const { data, error } = await supabase.rpc('extrato_mensal', {
+    p_tipo:  profissional,
+    p_desde: dataInicio,
+  })
   if (error) throw error
 
-  const coluna = `${profissional}_valor` as 'camta_valor' | 'medico_valor' | 'psi1_valor' | 'psi2_valor'
-
-  // Agrupa por mês
+  // Indexa por mês
   const map = new Map<string, { valor: number; atendimentos: number }>()
-  for (const l of data ?? []) {
-    const iso = l.data_atendimento.slice(0, 7) // 'YYYY-MM'
-    const val = Number(l[coluna] ?? 0)
-    if (val <= 0) continue
-    const atual = map.get(iso) ?? { valor: 0, atendimentos: 0 }
-    map.set(iso, { valor: atual.valor + val, atendimentos: atual.atendimentos + 1 })
+  for (const l of (data ?? []) as { iso_mes: string; valor: number; atendimentos: number }[]) {
+    map.set(l.iso_mes, { valor: Number(l.valor), atendimentos: Number(l.atendimentos) })
   }
 
   // Gera os 12 meses em ordem, com zero nos meses sem dados

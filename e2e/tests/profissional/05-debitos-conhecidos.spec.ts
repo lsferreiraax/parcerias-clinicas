@@ -7,14 +7,12 @@ import { abrirRota } from '../../helpers/ui'
 // remova o test.fail() e atualize docs/qa-processo-de-teste.md + backlog.md.
 
 test.describe('Profissional: débitos conhecidos', () => {
-  test('[DT13] o profissional NÃO deveria ler lancamentos', async ({ api }) => {
-    test.fail(true, 'DT13: RLS de lancamentos aberta a qualquer autenticado (staging e produção)')
+  test('[DT13 corrigido na 038] o profissional NÃO deveria ler lancamentos', async ({ api }) => {
     const r = await api.get('lancamentos?select=id,paciente&limit=5')
     expect(semDados(r), descrever(r)).toBe(true)
   })
 
-  test('[DT13] o profissional NÃO deveria ler parcelas', async ({ api }) => {
-    test.fail(true, 'DT13: RLS de parcelas aberta a qualquer autenticado (staging e produção)')
+  test('[DT13 corrigido na 038] o profissional NÃO deveria ler parcelas', async ({ api }) => {
     const r = await api.get('parcelas?select=id&limit=5')
     expect(semDados(r), descrever(r)).toBe(true)
   })

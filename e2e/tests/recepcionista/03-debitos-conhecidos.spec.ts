@@ -11,14 +11,12 @@ test.describe('Recepcionista: débitos conhecidos', () => {
     expect(await abrirRota(page, '/extrato')).toBe('/sem-acesso')
   })
 
-  test('[DT13] a recepcionista NÃO deveria ler lancamentos pela API', async ({ api }) => {
-    test.fail(true, 'DT13: RLS de lancamentos aberta a qualquer autenticado')
+  test('[DT13 corrigido na 038] a recepcionista NÃO deveria ler lancamentos pela API', async ({ api }) => {
     const r = await api.get('lancamentos?select=id,paciente&limit=5')
     expect(semDados(r), descrever(r)).toBe(true)
   })
 
-  test('[DT13] a recepcionista NÃO deveria ler parcelas pela API', async ({ api }) => {
-    test.fail(true, 'DT13: RLS de parcelas aberta a qualquer autenticado')
+  test('[DT13 corrigido na 038] a recepcionista NÃO deveria ler parcelas pela API', async ({ api }) => {
     const r = await api.get('parcelas?select=id&limit=5')
     expect(semDados(r), descrever(r)).toBe(true)
   })
