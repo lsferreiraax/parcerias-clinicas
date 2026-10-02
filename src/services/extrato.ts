@@ -23,12 +23,15 @@ export interface PontoMensal {
 export async function getExtrato(
   profissional: TipoProfissional,
   filtro?: { dataInicio?: string; dataFim?: string },
+  profissionalId?: string,
 ): Promise<LinhaExtrato[]> {
   // Função SECURITY DEFINER (migration 038): quem não tem acesso financeiro só recebe o próprio tipo.
   const { data, error } = await supabase.rpc('extrato_profissional', {
     p_tipo:   profissional,
     p_inicio: filtro?.dataInicio ?? null,
     p_fim:    filtro?.dataFim ?? null,
+    // DT17: admin/financeiro podem pedir uma pessoa; para os demais o banco usa o próprio profissional_id
+    ...(profissionalId ? { p_profissional_id: profissionalId } : {}),
   })
   if (error) throw error
 
@@ -46,6 +49,7 @@ export async function getExtrato(
 
 export async function getExtratoMensal(
   profissional: TipoProfissional,
+  profissionalId?: string,
 ): Promise<PontoMensal[]> {
   const dozeAtras = new Date()
   dozeAtras.setMonth(dozeAtras.getMonth() - 11)
@@ -55,6 +59,7 @@ export async function getExtratoMensal(
   const { data, error } = await supabase.rpc('extrato_mensal', {
     p_tipo:  profissional,
     p_desde: dataInicio,
+    ...(profissionalId ? { p_profissional_id: profissionalId } : {}),
   })
   if (error) throw error
 

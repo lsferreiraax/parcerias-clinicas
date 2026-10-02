@@ -8,7 +8,7 @@ import {
 } from 'recharts'
 import { Card, CardHeader, CardBody, Badge, Button, FiltroData, KpiCard } from '@/components/ui'
 import { useExtrato, useExtratoMensal } from '@/hooks/useExtrato'
-import { useParcerias } from '@/hooks/useConfiguracoes'
+import { useParcerias, useProfissionais } from '@/hooks/useConfiguracoes'
 import { usePerfil } from '@/contexts/PerfilContext'
 import { fmt } from '@/lib/utils'
 import { gerarComprovante } from '@/services/relatorio'
@@ -25,11 +25,14 @@ const PROFISSIONAIS: { value: TipoProfissional; label: string; color: string }[]
 export default function Extrato() {
   const { isProfissional, perfil }      = usePerfil()
   const { data: parcerias = [] }        = useParcerias()
+  const { data: todosProfissionais = [] } = useProfissionais()
   const getParceriaLabel = (id: string) => parcerias.find(p => p.id === id)?.descricao || id
   const [profissional, setProfissional] = useState<TipoProfissional>('camta')
   const [dataInicio, setDataInicio]     = useState('')
   const [dataFim, setDataFim]           = useState('')
   const [mesAtivo, setMesAtivo]         = useState<string | null>(null)
+  // DT17: admin/financeiro podem filtrar por uma pessoa do tipo (vazio = todas as cotas do tipo)
+  const [pessoaId, setPessoaId]         = useState('')
 
   // Se for perfil Profissional, trava no seu próprio tipo
   useEffect(() => {
@@ -39,7 +42,10 @@ export default function Extrato() {
   }, [isProfissional, perfil])
 
   // Resetar filtro de mês ao trocar profissional
-  useEffect(() => { setMesAtivo(null) }, [profissional])
+  useEffect(() => { setMesAtivo(null); setPessoaId('') }, [profissional])
+  useEffect(() => { setMesAtivo(null) }, [pessoaId])
+  const pessoasDoTipo = todosProfissionais.filter(p => p.tipo === profissional)
+  const pessoaFiltro  = !isProfissional && pessoaId && pessoasDoTipo.some(p => p.id === pessoaId) ? pessoaId : undefined
 
   const filtro = {
     ...(dataInicio ? { dataInicio } : {}),
@@ -47,7 +53,7 @@ export default function Extrato() {
   }
   const filtroAtivo = Object.keys(filtro).length > 0 ? filtro : undefined
 
-  const { data: linhas, isLoading } = useExtrato(profissional, filtroAtivo)
+  const { data: linhas, isLoading } = useExtrato(profissional, filtroAtivo, pessoaFiltro)
 
   // N8: filtrar tabela pelo mês clicado no gráfico (mesAtivo = 'YYYY-MM')
   const linhasFiltradas = mesAtivo
@@ -57,7 +63,8 @@ export default function Extrato() {
   const total = linhasFiltradas.reduce((s, l) => s + l.valor_profissional, 0)
   const pagas = linhasFiltradas.filter(l => l.status === 'pago').reduce((s, l) => s + l.valor_profissional, 0)
 
-  const profLabel   = PROFISSIONAIS.find(p => p.value === profissional)?.label ?? profissional
+  const nomePessoa  = pessoaFiltro ? todosProfissionais.find(p => p.id === pessoaFiltro)?.nome : undefined
+  const profLabel   = nomePessoa ?? PROFISSIONAIS.find(p => p.value === profissional)?.label ?? profissional
   const usuarioNome = perfil?.nome ?? 'Usuário'
   const profColor   = PROFISSIONAIS.find(p => p.value === profissional)?.color ?? 'bg-blue-600'
   const lineColor   = profColor.replace('bg-', '').replace('-600', '').replace('-500', '')
@@ -66,7 +73,7 @@ export default function Extrato() {
   }
   const cor = CORES[lineColor] ?? '#1F3864'
 
-  const { data: mensal } = useExtratoMensal(profissional)
+  const { data: mensal } = useExtratoMensal(profissional, pessoaFiltro)
 
   const mediaMensal = mensal && mensal.some(p => p.valor > 0)
     ? mensal.filter(p => p.valor > 0).reduce((s, p) => s + p.valor, 0) /
@@ -131,6 +138,17 @@ export default function Extrato() {
               {p.label}
             </button>
           ))}
+        </div>
+      )}
+
+      {!isProfissional && pessoasDoTipo.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <label htmlFor="extrato-pessoa" className="text-sm font-medium text-gray-700 dark:text-gray-200">Pessoa</label>
+          <select id="extrato-pessoa" value={pessoaId} onChange={e => setPessoaId(e.target.value)}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-700">
+            <option value="">Todas as cotas de {PROFISSIONAIS.find(p => p.value === profissional)?.label}</option>
+            {pessoasDoTipo.map(p => <option key={p.id} value={p.id}>{p.nome}{p.ativo ? '' : ' (inativo)'}</option>)}
+          </select>
         </div>
       )}
 

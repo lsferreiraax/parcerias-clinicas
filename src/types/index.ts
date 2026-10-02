@@ -27,6 +27,11 @@ export interface Lancamento {
   medico_valor: number
   psi1_valor: number
   psi2_valor: number
+  /** DT17: pessoa (profissionais.id) dona de cada cota; null = não atribuída */
+  camta_profissional_id?: string | null
+  medico_profissional_id?: string | null
+  psi1_profissional_id?: string | null
+  psi2_profissional_id?: string | null
   status: StatusLancamento
   observacoes?: string
   created_at: string
