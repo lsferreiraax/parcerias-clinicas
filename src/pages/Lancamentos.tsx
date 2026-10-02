@@ -6,8 +6,11 @@ import {
   useDeletarLancamento, useEditarLancamento, useDeletarEmLote,
   useCancelarLancamento, useLogEdicaoLancamento, useVerificarDuplicata,
 } from '@/hooks/useLancamentos'
-import { useParcerias } from '@/hooks/useConfiguracoes'
+import { useParcerias, useProfissionais } from '@/hooks/useConfiguracoes'
 import { ImportacaoModal } from '@/components/lancamentos/ImportacaoModal'
+import { AtribuirProfissionaisModal } from '@/components/lancamentos/AtribuirProfissionaisModal'
+import ProfissionaisPorCota, { cotasSemPessoa, ROTULO_COTA } from '@/components/lancamentos/ProfissionaisPorCota'
+import type { PessoasPorCota } from '@/services/lancamentos'
 import { fmt } from '@/lib/utils'
 import { calcularRateio, validarResultadoRateio } from '@/services/rateio'
 import { usePerfil } from '@/contexts/PerfilContext'
@@ -181,9 +184,14 @@ export default function Lancamentos() {
   const podeEditar = isAdmin || isGestor
 
   const { data: parcerias = [] } = useParcerias()
+  const { data: profissionais = [] } = useProfissionais()
 
   const [modal, setModal]                         = useState(false)
   const [modalImportar, setModalImportar]         = useState(false)
+  const [modalAtribuir, setModalAtribuir]         = useState(false)
+  const [pessoasNovo, setPessoasNovo]             = useState<PessoasPorCota>({})
+  const [pessoasEdicao, setPessoasEdicao]         = useState<PessoasPorCota>({})
+  const [erroPessoas, setErroPessoas]             = useState('')
   const [modalEdicao, setModalEdicao]             = useState(false)
   const [modalExclusao, setModalExclusao]         = useState(false)
   const [modalCancelar, setModalCancelar]         = useState<Lancamento | null>(null)
@@ -284,10 +292,26 @@ export default function Lancamentos() {
     setMotivoCancelamento('')
   }
 
+  const colunasPessoas = (p: PessoasPorCota) => ({
+    camta_profissional_id:  p.camta  ?? null,
+    medico_profissional_id: p.medico ?? null,
+    psi1_profissional_id:   p.psi1   ?? null,
+    psi2_profissional_id:   p.psi2   ?? null,
+  })
+
+  const validarPessoas = (config: ParceriaConfig | null, pessoas: PessoasPorCota) => {
+    const faltam = cotasSemPessoa(config, profissionais, pessoas)
+    if (faltam.length === 0) { setErroPessoas(''); return true }
+    setErroPessoas(`Selecione o profissional de cada cota: ${faltam.map(t => ROTULO_COTA[t]).join(', ')}.`)
+    return false
+  }
+
   const handleSubmit = async () => {
     if (!form.paciente || !form.valor_total || !form.parceria_id || form.parceria_id === 'A') return
+    if (!validarPessoas(getParceriaConfig(form.parceria_id), pessoasNovo)) return
     await criar.mutateAsync({
       ...form,
+      ...colunasPessoas(pessoasNovo),
       nome_responsavel: form.nome_responsavel || undefined,
       data_pagamento:   form.data_pagamento   || undefined,
       meio_pagamento:   form.meio_pagamento.length > 0 ? form.meio_pagamento : undefined,
@@ -296,6 +320,8 @@ export default function Lancamentos() {
     })
     setModal(false)
     setForm(INIT)
+    setPessoasNovo({})
+    setErroPessoas('')
   }
 
   const abrirEdicao = (l: Lancamento) => {
@@ -310,15 +336,24 @@ export default function Lancamentos() {
       valor_total:      Number(l.valor_total),
       observacoes:      l.observacoes ?? '',
     })
+    setPessoasEdicao({
+      ...(l.camta_profissional_id  ? { camta:  l.camta_profissional_id }  : {}),
+      ...(l.medico_profissional_id ? { medico: l.medico_profissional_id } : {}),
+      ...(l.psi1_profissional_id   ? { psi1:   l.psi1_profissional_id }   : {}),
+      ...(l.psi2_profissional_id   ? { psi2:   l.psi2_profissional_id }   : {}),
+    })
+    setErroPessoas('')
     setModalEdicao(true)
   }
 
   const handleSalvarEdicao = async () => {
     if (!lancamentoEditando || !formEdicao.paciente || !formEdicao.valor_total) return
+    if (!validarPessoas(getParceriaConfig(formEdicao.parceria_id), pessoasEdicao)) return
     await editar.mutateAsync({
       id: lancamentoEditando.id,
       dados: {
         ...formEdicao,
+        ...colunasPessoas(pessoasEdicao),
         nome_responsavel: formEdicao.nome_responsavel || undefined,
         data_pagamento:   formEdicao.data_pagamento   || undefined,
         meio_pagamento:   formEdicao.meio_pagamento.length > 0 ? formEdicao.meio_pagamento : undefined,
@@ -340,6 +375,11 @@ export default function Lancamentos() {
             <Button onClick={abrirModalExclusao} className="bg-red-600 hover:bg-red-700">
               <Trash2 size={16} />
               Excluir selecionados ({selecionados.size})
+            </Button>
+          )}
+          {podeEditar && (
+            <Button onClick={() => setModalAtribuir(true)} className="bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200">
+              Atribuir profissionais
             </Button>
           )}
           {podeEditar && (
@@ -591,6 +631,8 @@ export default function Lancamentos() {
         </Modal>
       )}
 
+      <AtribuirProfissionaisModal open={modalAtribuir} onClose={() => setModalAtribuir(false)} />
+
       <ImportacaoModal
         open={modalImportar}
         onClose={() => setModalImportar(false)}
@@ -676,6 +718,16 @@ export default function Lancamentos() {
             </div>
           )}
 
+          <ProfissionaisPorCota
+            config={getParceriaConfig(form.parceria_id)}
+            profissionais={profissionais}
+            value={pessoasNovo}
+            onChange={setPessoasNovo}
+          />
+          {erroPessoas && modal && (
+            <p role="alert" className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{erroPessoas}</p>
+          )}
+
           {/* Preview do rateio com validação de consistência */}
           {(() => {
             const config = getParceriaConfig(form.parceria_id)
@@ -759,6 +811,16 @@ export default function Lancamentos() {
           />
 
           <RateioPreview config={getParceriaConfig(formEdicao.parceria_id)} valor_total={formEdicao.valor_total} />
+
+          <ProfissionaisPorCota
+            config={getParceriaConfig(formEdicao.parceria_id)}
+            profissionais={profissionais}
+            value={pessoasEdicao}
+            onChange={setPessoasEdicao}
+          />
+          {erroPessoas && modalEdicao && (
+            <p role="alert" className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{erroPessoas}</p>
+          )}
 
           <Input
             label="Observações (opcional)" placeholder="..."

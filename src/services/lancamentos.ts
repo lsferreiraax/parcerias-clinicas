@@ -24,15 +24,54 @@ export interface NovoLancamento {
   num_parcelas: number
   valor_total: number
   observacoes?: string
+  camta_profissional_id?: string | null
+  medico_profissional_id?: string | null
+  psi1_profissional_id?: string | null
+  psi2_profissional_id?: string | null
+}
+
+export type TipoCota = 'camta' | 'medico' | 'psi1' | 'psi2'
+export const TIPOS_COTA: TipoCota[] = ['camta', 'medico', 'psi1', 'psi2']
+export type PessoasPorCota = Partial<Record<TipoCota, string>>
+
+/** Mantém a pessoa só nas cotas com valor > 0 (cota zerada não grava pessoa; DT17). */
+function colunasPessoa(
+  rateio: Partial<Record<`${TipoCota}_valor`, number>>,
+  dados: Partial<Record<`${TipoCota}_profissional_id`, string | null | undefined>>,
+): Record<string, string | null> {
+  const out: Record<string, string | null> = {}
+  for (const t of TIPOS_COTA) {
+    const col = `${t}_profissional_id` as const
+    if (!(col in dados)) continue
+    out[col] = Number(rateio[`${t}_valor` as `${TipoCota}_valor`] ?? 0) > 0 ? (dados[col] || null) : null
+  }
+  return out
+}
+
+/** Para cotas sem pessoa informada: se existe exatamente 1 profissional ativo do tipo, usa-o (ex.: importação por Excel). */
+async function completarPessoasUnicas(
+  rateio: Partial<Record<`${TipoCota}_valor`, number>>,
+  dados: Partial<Record<`${TipoCota}_profissional_id`, string | null | undefined>>,
+): Promise<Partial<Record<`${TipoCota}_profissional_id`, string | null>>> {
+  const faltam = TIPOS_COTA.filter(t => Number(rateio[`${t}_valor` as `${TipoCota}_valor`] ?? 0) > 0 && !(dados[`${t}_profissional_id` as const]))
+  if (faltam.length === 0) return {}
+  const { data } = await supabase.from('profissionais').select('id, tipo, ativo').eq('ativo', true)
+  const out: Partial<Record<`${TipoCota}_profissional_id`, string | null>> = {}
+  for (const t of faltam) {
+    const ativos = (data ?? []).filter(p => p.tipo === t)
+    if (ativos.length === 1) out[`${t}_profissional_id` as const] = ativos[0].id as string
+  }
+  return out
 }
 
 export async function criarLancamento(dados: NovoLancamento) {
   const config = await getParceriaConfig(dados.parceria_id)
   const rateio = calcularRateio(config, dados.valor_total)
+  const unicas = await completarPessoasUnicas(rateio, dados)
 
   const { data, error } = await supabase
     .from('lancamentos')
-    .insert({ ...dados, ...rateio })
+    .insert({ ...dados, ...rateio, ...colunasPessoa(rateio, { ...dados, ...unicas }) })
     .select()
     .single()
 
@@ -163,11 +202,22 @@ export interface EdicaoLancamento {
   parceria_id: ParceriaId
   valor_total: number
   observacoes?: string
+  camta_profissional_id?: string | null
+  medico_profissional_id?: string | null
+  psi1_profissional_id?: string | null
+  psi2_profissional_id?: string | null
 }
 
-type CampoAuditoria = { key: 'data_atendimento' | 'paciente' | 'parceria_id' | 'valor_total' | 'observacoes'; label: string }
+type CampoAuditoria = {
+  key: 'data_atendimento' | 'paciente' | 'parceria_id' | 'valor_total' | 'observacoes' | `${TipoCota}_profissional_id`
+  label: string
+}
 
 const CAMPOS_AUDITORIA: CampoAuditoria[] = [
+  { key: 'camta_profissional_id',  label: 'Profissional Camta' },
+  { key: 'medico_profissional_id', label: 'Profissional Médico' },
+  { key: 'psi1_profissional_id',   label: 'Profissional Psi1' },
+  { key: 'psi2_profissional_id',   label: 'Profissional Psi2' },
   { key: 'data_atendimento', label: 'Data do Atendimento' },
   { key: 'paciente',         label: 'Paciente'            },
   { key: 'parceria_id',      label: 'Parceria'            },
@@ -180,7 +230,7 @@ export async function editarLancamento(id: string, dados: EdicaoLancamento) {
 
   const { data: atual, error: errBusca } = await supabase
     .from('lancamentos')
-    .select('data_atendimento, paciente, parceria_id, valor_total, observacoes')
+    .select('data_atendimento, paciente, parceria_id, valor_total, observacoes, camta_profissional_id, medico_profissional_id, psi1_profissional_id, psi2_profissional_id')
     .eq('id', id)
     .single()
   if (errBusca) throw errBusca
@@ -188,22 +238,28 @@ export async function editarLancamento(id: string, dados: EdicaoLancamento) {
   const config = await getParceriaConfig(dados.parceria_id)
   const rateio = calcularRateio(config, dados.valor_total)
 
+  const pessoas = colunasPessoa(rateio, dados)
   const { error } = await supabase
     .from('lancamentos')
-    .update({ ...dados, ...rateio })
+    .update({ ...dados, ...rateio, ...pessoas })
     .eq('id', id)
   if (error) throw error
 
   // Grava log dos campos alterados
+  const { data: nomes } = await supabase.from('profissionais').select('id, nome')
+  const nomePessoa = new Map((nomes ?? []).map(p => [p.id as string, p.nome as string]))
   const atualTyped = atual as Record<CampoAuditoria['key'], unknown>
-  const dadosTyped = dados as Record<CampoAuditoria['key'], unknown>
+  const novoTyped  = { ...dados, ...pessoas } as Record<CampoAuditoria['key'], unknown>
+  const mostra = (key: CampoAuditoria['key'], v: unknown) =>
+    key.endsWith('_profissional_id') ? (nomePessoa.get(String(v ?? '')) ?? '') : String(v ?? '')
   const logs = CAMPOS_AUDITORIA
-    .filter(({ key }) => String(atualTyped[key] ?? '') !== String(dadosTyped[key] ?? ''))
+    .filter(({ key }) => !key.endsWith('_profissional_id') || key in novoTyped)
+    .filter(({ key }) => String(atualTyped[key] ?? '') !== String(novoTyped[key] ?? ''))
     .map(({ key, label }) => ({
       lancamento_id:  id,
       campo:          label,
-      valor_anterior: String(atualTyped[key] ?? ''),
-      valor_novo:     String(dadosTyped[key] ?? ''),
+      valor_anterior: mostra(key, atualTyped[key]),
+      valor_novo:     mostra(key, novoTyped[key]),
       alterado_por:   user?.id ?? null,
     }))
 
@@ -277,4 +333,32 @@ export async function deletarEmLote(ids: string[], motivo: string) {
 
   const { error } = await supabase.from('lancamentos').delete().in('id', ids)
   if (error) throw error
+}
+
+/** Quantas cotas (valor > 0) ainda não têm pessoa atribuída, por tipo (para a atribuição em lote). */
+export async function contarCotasSemPessoa(): Promise<Record<TipoCota, number>> {
+  const out = { camta: 0, medico: 0, psi1: 0, psi2: 0 } as Record<TipoCota, number>
+  for (const t of TIPOS_COTA) {
+    const { count, error } = await supabase
+      .from('lancamentos')
+      .select('id', { count: 'exact', head: true })
+      .gt(`${t}_valor`, 0)
+      .is(`${t}_profissional_id`, null)
+      .neq('status', 'cancelado')
+    if (error) throw error
+    out[t] = count ?? 0
+  }
+  return out
+}
+
+/** Atribui a pessoa a todas as cotas do tipo que ainda não têm pessoa (o banco recusa pessoa de outro tipo ou inativa). */
+export async function atribuirPessoaEmLote(tipo: TipoCota, profissionalId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('lancamentos')
+    .update({ [`${tipo}_profissional_id`]: profissionalId })
+    .gt(`${tipo}_valor`, 0)
+    .is(`${tipo}_profissional_id`, null)
+    .select('id')
+  if (error) throw error
+  return data?.length ?? 0
 }
