@@ -55,6 +55,7 @@ export default function ProfissionaisPorCota({ config, profissionais, value, onC
 
   // pré-seleciona quando só há uma pessoa ativa e descarta cotas que a parceria não paga
   useEffect(() => {
+    if (!config || profissionais.length === 0) return   // dados ainda não carregados: não mexe nas escolhas
     const prox = sugerirPessoas(config, profissionais, value)
     if (JSON.stringify(prox) !== JSON.stringify(value)) onChange(prox)
     // eslint-disable-next-line react-hooks/exhaustive-deps

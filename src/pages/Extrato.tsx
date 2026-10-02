@@ -44,8 +44,8 @@ export default function Extrato() {
   // Resetar filtro de mês ao trocar profissional
   useEffect(() => { setMesAtivo(null); setPessoaId('') }, [profissional])
   useEffect(() => { setMesAtivo(null) }, [pessoaId])
-  const pessoasDoTipo = todosProfissionais.filter(p => p.tipo === profissional && p.ativo)
-  const pessoaFiltro  = !isProfissional && pessoaId ? pessoaId : undefined
+  const pessoasDoTipo = todosProfissionais.filter(p => p.tipo === profissional)
+  const pessoaFiltro  = !isProfissional && pessoaId && pessoasDoTipo.some(p => p.id === pessoaId) ? pessoaId : undefined
 
   const filtro = {
     ...(dataInicio ? { dataInicio } : {}),
@@ -147,7 +147,7 @@ export default function Extrato() {
           <select id="extrato-pessoa" value={pessoaId} onChange={e => setPessoaId(e.target.value)}
             className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-700">
             <option value="">Todas as cotas de {PROFISSIONAIS.find(p => p.value === profissional)?.label}</option>
-            {pessoasDoTipo.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            {pessoasDoTipo.map(p => <option key={p.id} value={p.id}>{p.nome}{p.ativo ? '' : ' (inativo)'}</option>)}
           </select>
         </div>
       )}

@@ -209,15 +209,11 @@ export interface EdicaoLancamento {
 }
 
 type CampoAuditoria = {
-  key: 'data_atendimento' | 'paciente' | 'parceria_id' | 'valor_total' | 'observacoes' | `${TipoCota}_profissional_id`
+  key: 'data_atendimento' | 'paciente' | 'parceria_id' | 'valor_total' | 'observacoes'
   label: string
 }
 
 const CAMPOS_AUDITORIA: CampoAuditoria[] = [
-  { key: 'camta_profissional_id',  label: 'Profissional Camta' },
-  { key: 'medico_profissional_id', label: 'Profissional Médico' },
-  { key: 'psi1_profissional_id',   label: 'Profissional Psi1' },
-  { key: 'psi2_profissional_id',   label: 'Profissional Psi2' },
   { key: 'data_atendimento', label: 'Data do Atendimento' },
   { key: 'paciente',         label: 'Paciente'            },
   { key: 'parceria_id',      label: 'Parceria'            },
@@ -246,20 +242,16 @@ export async function editarLancamento(id: string, dados: EdicaoLancamento) {
   if (error) throw error
 
   // Grava log dos campos alterados
-  const { data: nomes } = await supabase.from('profissionais').select('id, nome')
-  const nomePessoa = new Map((nomes ?? []).map(p => [p.id as string, p.nome as string]))
+  // A troca de profissional por cota é auditada no banco (trigger da migration 042), inclusive na atribuição em lote.
   const atualTyped = atual as Record<CampoAuditoria['key'], unknown>
-  const novoTyped  = { ...dados, ...pessoas } as Record<CampoAuditoria['key'], unknown>
-  const mostra = (key: CampoAuditoria['key'], v: unknown) =>
-    key.endsWith('_profissional_id') ? (nomePessoa.get(String(v ?? '')) ?? '') : String(v ?? '')
+  const dadosTyped = dados as Record<CampoAuditoria['key'], unknown>
   const logs = CAMPOS_AUDITORIA
-    .filter(({ key }) => !key.endsWith('_profissional_id') || key in novoTyped)
-    .filter(({ key }) => String(atualTyped[key] ?? '') !== String(novoTyped[key] ?? ''))
+    .filter(({ key }) => String(atualTyped[key] ?? '') !== String(dadosTyped[key] ?? ''))
     .map(({ key, label }) => ({
       lancamento_id:  id,
       campo:          label,
-      valor_anterior: mostra(key, atualTyped[key]),
-      valor_novo:     mostra(key, novoTyped[key]),
+      valor_anterior: String(atualTyped[key] ?? ''),
+      valor_novo:     String(dadosTyped[key] ?? ''),
       alterado_por:   user?.id ?? null,
     }))
 
@@ -358,6 +350,7 @@ export async function atribuirPessoaEmLote(tipo: TipoCota, profissionalId: strin
     .update({ [`${tipo}_profissional_id`]: profissionalId })
     .gt(`${tipo}_valor`, 0)
     .is(`${tipo}_profissional_id`, null)
+    .neq('status', 'cancelado')
     .select('id')
   if (error) throw error
   return data?.length ?? 0

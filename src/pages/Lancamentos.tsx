@@ -387,7 +387,7 @@ export default function Lancamentos() {
               <Upload size={16} /> Importar Excel
             </Button>
           )}
-          <Button onClick={() => setModal(true)}><Plus size={16} /> Novo Lançamento</Button>
+          <Button onClick={() => { setErroPessoas(''); setModal(true) }}><Plus size={16} /> Novo Lançamento</Button>
         </div>
       </div>
 

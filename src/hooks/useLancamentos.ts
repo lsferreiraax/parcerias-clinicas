@@ -18,7 +18,12 @@ export function useCriarLancamento() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (dados: NovoLancamento) => criarLancamento(dados),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lancamentos'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lancamentos'] })
+      qc.invalidateQueries({ queryKey: ['extrato'] })
+      qc.invalidateQueries({ queryKey: ['extrato-mensal'] })
+      qc.invalidateQueries({ queryKey: ['cotas-sem-pessoa'] })
+    },
   })
 }
 
@@ -74,6 +79,9 @@ export function useEditarLancamento() {
       qc.invalidateQueries({ queryKey: ['resumo-parceria'] })
       qc.invalidateQueries({ queryKey: ['kpi-comparativo'] })
       qc.invalidateQueries({ queryKey: ['receita-mensal'] })
+      qc.invalidateQueries({ queryKey: ['extrato'] })
+      qc.invalidateQueries({ queryKey: ['extrato-mensal'] })
+      qc.invalidateQueries({ queryKey: ['cotas-sem-pessoa'] })
     },
   })
 }
