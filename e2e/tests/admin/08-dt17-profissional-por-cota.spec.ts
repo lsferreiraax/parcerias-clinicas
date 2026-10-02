@@ -143,7 +143,7 @@ test.describe('DT17 admin: formulário Novo Lançamento', () => {
 })
 
 test.describe('DT17 admin: edição', () => {
-  test('caso 5: a edição carrega a pessoa gravada; salvar sem mexer mantém a pessoa e não gera log de profissional', async ({ page, apiAdmin }) => {
+  test('caso 5: a edição carrega a pessoa gravada; salvar sem mexer mantém a pessoa escolhida e não gera log dela', async ({ page, apiAdmin }) => {
     test.skip(!cotasPagas(parceria).includes('psi1'), 'a parceria escolhida não paga psi1')
     const paciente = nomeLanc('Edicao-mantem')
     const l = await inserirLancamentoQA(apiAdmin, {
@@ -156,8 +156,10 @@ test.describe('DT17 admin: edição', () => {
 
     const r = await apiAdmin.get(`lancamentos?select=psi1_profissional_id&id=eq.${l.id}`)
     expect(r.body[0].psi1_profissional_id, 'pessoa mantida').toBe(outra.id)
-    const log = await apiAdmin.get(`lancamentos_edicoes_log?select=campo&lancamento_id=eq.${l.id}&campo=like.Profissional*`)
-    expect(log.body, 'sem troca de pessoa = sem log de profissional').toHaveLength(0)
+    // Cotas sem pessoa que só têm 1 profissional ativo são pré-selecionadas ao editar (atribuição real, auditada pelo
+    // trigger da 042); o que se prova aqui é que a pessoa JÁ escolhida em Psi1 não muda e não gera log.
+    const log = await apiAdmin.get(`lancamentos_edicoes_log?select=campo&lancamento_id=eq.${l.id}&campo=eq.Profissional Psi1`)
+    expect(log.body, 'Psi1 mantida = sem log de Profissional Psi1').toHaveLength(0)
   })
 
   test('caso 5b: trocar a pessoa pela tela grava a nova pessoa e o log "Profissional Psi1" com os nomes', async ({ page, apiAdmin }) => {

@@ -9,6 +9,16 @@ export interface DadosLancamento {
   valor: number
 }
 
+/** DT17: o formulário exige o profissional de cada cota; escolhe o primeiro da lista nas que ainda estão vazias. */
+export async function escolherProfissionaisPorCota(modal: Locator): Promise<void> {
+  const selects = modal.getByTestId('profissionais-por-cota').locator('select')
+  const n = await selects.count()
+  for (let i = 0; i < n; i++) {
+    const sel = selects.nth(i)
+    if (!(await sel.isDisabled()) && (await sel.inputValue()) === '') await sel.selectOption({ index: 1 })
+  }
+}
+
 /** Cria um lançamento parcelado pela tela de Lançamentos (parceria = a primeira da lista). */
 export async function criarLancamentoPelaTela(page: Page, d: DadosLancamento): Promise<void> {
   await abrirRota(page, '/lancamentos')
@@ -20,6 +30,7 @@ export async function criarLancamentoPelaTela(page: Page, d: DadosLancamento): P
   await campo(modal, 'Forma de Pagamento').selectOption('parcelado')
   await campo(modal, 'Nº de Parcelas').fill(String(d.parcelas))
   await campo(modal, 'Valor Total (R$)').fill(String(d.valor))
+  await escolherProfissionaisPorCota(modal)
   await modal.getByRole('button', { name: 'Salvar Lançamento' }).click()
   await modal.locator('h2', { hasText: 'Novo Lançamento' }).waitFor({ state: 'detached', timeout: 20_000 })
 }
