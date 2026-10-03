@@ -52,6 +52,9 @@ export async function limparDadosQA(admin: ApiRest): Promise<string[]> {
   // Resíduos
   const res = await comRetry(() => admin.get(`lancamentos?select=id&paciente=${padrao}`))
   const resP = await comRetry(() => admin.get(`pacientes?select=id&nome=${padrao}`))
+  // Onda 0 (S2): sessões QA- (lancamento_id vira NULL ao apagar o lançamento; a ordem acima apaga as sessões antes).
+  const resS = await comRetry(() => admin.get(`sessoes?select=id&observacoes=${padrao}`, 'psicologia'))
+  if (resS.status === 200) log.push(`resíduos: sessoes=${linhas(resS)}`)
   if (res.status === 200 && resP.status === 200) log.push(`resíduos: lancamentos=${linhas(res)} pacientes=${linhas(resP)}`)
   else log.push(`resíduos: NÃO VERIFICADOS (HTTP ${res.status}/${resP.status}); confira no staging o prefixo "${PREFIXO_QA}"`)
   // DT16: usuários de teste (qa-dt16-*) são desativados (ativo=false); apagar de auth.users exige service role.

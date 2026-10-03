@@ -20,6 +20,16 @@ test.describe('API anônima em produção: nenhuma linha', () => {
     }
   })
 
+  // Onda 0 / S1 (migration 043): as 3 views financeiras não podem ser lidas pelo anônimo (GET apenas; sem POST em produção).
+  // ANTES da promoção da 043 este teste FALHA de propósito em produção (o anônimo lê 1, 3 e 4 linhas): é o sinal de que falta aplicar.
+  test('views financeiras (S1/043) não devolvem dado ao anônimo', async () => {
+    for (const v of ['vw_saldo_parceria', 'resumo_por_parceria', 'resumo_profissional']) {
+      const r = await anon.get(`${v}?select=*&limit=1`)
+      expect.soft(r.status, `public.${v}: ${descrever(r)} (não pode ser 406)`).not.toBe(406)
+      expect.soft(semDados(r), `public.${v}: ${descrever(r)} (esperado 401/403 ou lista vazia)`).toBe(true)
+    }
+  })
+
   test('tabelas de psicologia não devolvem dado ao anônimo', async () => {
     // Hoje o schema não está exposto em produção (406 é aceito); com PROD_PSICOLOGIA_EXPOSTA=sim, 406 passa a ser falha.
     const exposta = psicologiaExposta()
