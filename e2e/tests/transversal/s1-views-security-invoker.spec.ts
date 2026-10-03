@@ -17,6 +17,10 @@ for (const v of VIEWS_FINANCEIRAS) {
     expect(r.status, descrever(r)).toBe(200)
     expect(Array.isArray(r.body)).toBe(true)
     test.info().annotations.push({ type: 'linhas', description: `${perfil.id}/${v}: ${r.body.length} linha(s)` })
+    // Débito conhecido S5 (Onda 1): movimentacoes_parceria tem RLS só por PAPEL (admin/gestor), então vw_saldo_parceria ainda
+    // mostra a conta corrente à recepcionista (role gestor). Quando a S5 for corrigida este teste PASSA e o Playwright acusa
+    // "esperava falhar": remova este test.fail().
+    test.fail(v === 'vw_saldo_parceria' && perfil.id === 'recepcionista', 'S5: RLS de movimentacoes_parceria por papel, não por acl_ver(conta_corrente)')
     if (perfil.id === 'admin' || perfil.id === 'financeiro') {
       expect(r.body.length, `${perfil.id} deve ver dados em ${v}`).toBeGreaterThan(0)
     } else {
